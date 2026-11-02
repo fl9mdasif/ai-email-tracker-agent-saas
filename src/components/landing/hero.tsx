@@ -38,21 +38,22 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
 
         <h1
           className="mt-[clamp(0.75rem,3.5vh,2rem)] max-w-4xl font-display leading-[1.02] font-bold tracking-[-0.03em]"
-          style={{ fontSize: "clamp(2.3rem, min(6.6vw, 9vh), 5.75rem)" }}
+          style={{ fontSize: "clamp(2rem, min(5.4vw, 6.8vh), 4.75rem)" }}
         >
-          <span className="hero-anim hero-anim-d2 block">Know what needs</span>
-          <span className="hero-anim hero-anim-d3 block">your reply,</span>
+          <span className="hero-anim hero-anim-d2 block">Never miss a reply</span>
+          <span className="hero-anim hero-anim-d2 block">that matters.</span>
+          <span className="hero-anim hero-anim-d3 block">
+            <span className="text-gradient">Your leads</span>
+          </span>
           <span className="hero-anim hero-anim-d4 block">
-            <span className="text-gradient">today.</span>
+            <span className="text-gradient">are waiting.</span>
           </span>
         </h1>
 
         <p className="hero-anim hero-anim-d4 mt-[clamp(0.75rem,3vh,2rem)] max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
-          Loopify reads your inboxes and outreach tools, tells you who to answer and follow
-          up with, and drafts the reply. You review it and click Send. Nothing goes out without you.
-        </p>
-        <p className="hero-anim hero-anim-d5 mt-3 max-w-xl text-base leading-relaxed text-white/50 [@media(max-height:760px)]:hidden">
-          Connects to Gmail, Outlook, Zoho, Hostinger, Instantly and Apollo.
+          Loopify connects to Gmail, Outlook, Zoho, Hostinger, Instantly and Apollo — reads every
+          thread, scores your hot leads, and drafts the follow-up. You review it and click Send.
+          Nothing goes out without you.
         </p>
 
         <div className="hero-anim hero-anim-d5 mt-[clamp(1rem,4vh,2.5rem)] flex flex-wrap items-center gap-3">
