@@ -11,7 +11,7 @@ export const ANALYSIS_USAGE_TAG = "email-analysis";
 
 export type AnalyzeEmailResult =
   | { ok: true; analysis: EmailAnalysis; model: string }
-  | { ok: false; message: string };
+  | { ok: false; reason: "not_configured" | "invalid_output" | "provider_error"; message: string };
 
 /**
  * Classifies and summarizes one email. It only reads the email it is given and only talks to
@@ -30,6 +30,6 @@ export async function analyzeEmail(
     schema: emailAnalysisSchema,
     responseJsonSchema: emailAnalysisJsonSchema,
   });
-  if (!result.ok) return { ok: false, message: result.message };
+  if (!result.ok) return { ok: false, reason: result.reason, message: result.message };
   return { ok: true, analysis: normalizeAnalysis(result.data), model: result.model };
 }
