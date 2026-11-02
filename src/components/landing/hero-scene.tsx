@@ -2,7 +2,6 @@
 
 import { Html, RoundedBox } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useTheme } from "next-themes";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
@@ -135,7 +134,7 @@ function LaneMarkers() {
           </mesh>
           <Html position={[0.55, 0, 0]} center style={{ pointerEvents: "none" }}>
             <span
-              className="rounded-full border bg-background/80 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-foreground backdrop-blur"
+              className="rounded-full border bg-[#0a0f23]/80 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-white backdrop-blur"
               style={{ borderColor: lane.color }}
             >
               {lane.label}
@@ -147,9 +146,17 @@ function LaneMarkers() {
   );
 }
 
-/** Gentle camera parallax that follows the pointer. */
+/** Half the scene width in world units, including the lane labels. */
+const HALF_WIDTH = 6.4;
+
+/** Keeps the whole scene in view for any container shape, with gentle pointer parallax. */
 function CameraRig() {
-  useFrame(({ camera, pointer }) => {
+  useFrame(({ camera, pointer, size }) => {
+    const perspective = camera as THREE.PerspectiveCamera;
+    const aspect = size.width / Math.max(size.height, 1);
+    const halfFov = THREE.MathUtils.degToRad(perspective.fov) / 2;
+    const fitZ = THREE.MathUtils.clamp(HALF_WIDTH / (Math.tan(halfFov) * aspect), 9, 24);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, fitZ, 0.1);
     camera.position.x = THREE.MathUtils.lerp(camera.position.x, pointer.x * 0.6, 0.04);
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, pointer.y * 0.4, 0.04);
     camera.lookAt(0, 0, 0);
@@ -158,12 +165,9 @@ function CameraRig() {
 }
 
 export default function HeroScene({ active }: { active: boolean }) {
-  const { resolvedTheme } = useTheme();
   const emails = useMemo(() => makeEmails(), []);
-  const baseColor = useMemo(
-    () => new THREE.Color(resolvedTheme === "dark" ? "#e3e6ff" : "#9aa0c8"),
-    [resolvedTheme],
-  );
+  // The hero is always dark, whatever the site theme.
+  const baseColor = useMemo(() => new THREE.Color("#e3e6ff"), []);
 
   return (
     <Canvas

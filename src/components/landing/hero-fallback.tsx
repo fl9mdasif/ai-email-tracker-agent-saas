@@ -27,7 +27,7 @@ export function HeroFallback() {
 
       {[100, 160, 220].map((y, i) => (
         <g key={y} className="mail" style={{ animationDelay: `${i * 1.5}s` }}>
-          <rect x="14" y={y - 14} width="38" height="26" rx="5" className="fill-muted-foreground/60" />
+          <rect x="14" y={y - 14} width="38" height="26" rx="5" className="fill-white/60" />
           <path d={`M17 ${y - 11} 33 ${y} 49 ${y - 11}`} fill="none" stroke="#1a1a2e" strokeOpacity=".35" />
         </g>
       ))}
@@ -48,7 +48,7 @@ export function HeroFallback() {
             strokeWidth="2"
           />
           <rect x="292" y={lane.y - 14} width="98" height="28" rx="14" fill={lane.color} fillOpacity=".15" stroke={lane.color} />
-          <text x="341" y={lane.y + 4} textAnchor="middle" fontSize="12" fontWeight="500" className="fill-foreground">
+          <text x="341" y={lane.y + 4} textAnchor="middle" fontSize="12" fontWeight="500" className="fill-white">
             {lane.label}
           </text>
         </g>

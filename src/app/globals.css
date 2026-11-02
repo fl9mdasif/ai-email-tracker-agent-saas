@@ -10,6 +10,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: var(--font-space-grotesk);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -131,5 +132,106 @@
     html {
       scroll-behavior: smooth;
     }
+  }
+}
+/* Landing hero: staggered slide-in, gradient text, marquee, small indicators. */
+@keyframes hero-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes scroll-line {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  50% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  51% {
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+.hero-anim {
+  opacity: 0;
+  animation: hero-slide-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero-anim-d1 {
+  animation-delay: 0.15s;
+}
+.hero-anim-d2 {
+  animation-delay: 0.3s;
+}
+.hero-anim-d3 {
+  animation-delay: 0.45s;
+}
+.hero-anim-d4 {
+  animation-delay: 0.6s;
+}
+.hero-anim-d5 {
+  animation-delay: 0.75s;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #c084fc, #a78bfa 45%, #60a5fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-gradient {
+  background: linear-gradient(90deg, #7c3aed, #2563eb);
+  box-shadow: 0 10px 30px -12px rgba(124, 58, 237, 0.6);
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+.animate-scroll-line {
+  animation: scroll-line 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-anim {
+    opacity: 1;
+    animation: none;
+  }
+  .animate-marquee,
+  .animate-pulse-dot,
+  .animate-scroll-line {
+    animation: none;
   }
 }
