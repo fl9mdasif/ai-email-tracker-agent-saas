@@ -9,3 +9,10 @@ export const syncAccountEventSchema = z.object({
 });
 
 export type SyncAccountEventData = z.infer<typeof syncAccountEventSchema>;
+
+/** Asks for a tenant's new mail to be analyzed. Sent after a sync found mail, and by the scheduler. */
+export const ANALYZE_TENANT_EVENT = "email-tracker/tenant.analyze";
+
+export const analyzeTenantEventSchema = z.object({ tenantId: z.uuid() });
+
+export type AnalyzeTenantEventData = z.infer<typeof analyzeTenantEventSchema>;
