@@ -23,6 +23,7 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
         </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0a0f23] via-[#0a0f23]/75 to-transparent md:via-[#0a0f23]/50" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0a0f23] to-transparent" />
+        <div className="dot-grid pointer-events-none absolute inset-0" />
         <div className="pointer-events-none absolute -top-40 -left-32 size-[520px] rounded-full bg-[#6b21a8]/30 blur-[120px]" />
         <div className="pointer-events-none absolute -right-32 bottom-0 size-[480px] rounded-full bg-[#1d4ed8]/25 blur-[120px]" />
       </div>

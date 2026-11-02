@@ -265,3 +265,72 @@
     animation: none;
   }
 }
+
+/* Hero extras: card fly-in, float, HOT LEAD glow, orbit rotation and dot grid. */
+@keyframes card-fly-in {
+  0% {
+    transform: translateZ(-200px) scale(0.5);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  100% {
+    transform: translateZ(0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes card-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes hot-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 20px rgba(239, 68, 68, 0.9),
+      0 0 40px rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.card-fly {
+  animation: card-fly-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.card-float {
+  animation: card-float 3.5s ease-in-out infinite;
+}
+.hot-glow {
+  animation: hot-glow 2s ease-in-out infinite;
+}
+.orbit-ring {
+  animation: orbit 30s linear infinite;
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-fly,
+  .card-float,
+  .hot-glow,
+  .orbit-ring {
+    animation: none;
+  }
+}

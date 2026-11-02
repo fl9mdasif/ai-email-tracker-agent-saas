@@ -4,11 +4,24 @@ import type { Provider, SampleMail } from "./providers";
 const WIDTH = 640;
 const HEIGHT = 400;
 
-export type CardTextures = { raw: THREE.CanvasTexture; sorted: THREE.CanvasTexture };
+/** Where the priority chip sits on the card face, in canvas pixels (640 x 400). */
+export type ChipBox = { cx: number; cy: number; width: number };
+
+export const CARD_PIXELS = { width: WIDTH, height: HEIGHT } as const;
+
+export type CardTextures = {
+  raw: THREE.CanvasTexture;
+  sorted: THREE.CanvasTexture;
+  chip: ChipBox | null;
+};
 
 const cache = new Map<string, CardTextures>();
 
-function draw(provider: Provider, mail: SampleMail, sorted: boolean): THREE.CanvasTexture {
+function draw(
+  provider: Provider,
+  mail: SampleMail,
+  sorted: boolean,
+): { texture: THREE.CanvasTexture; chip: ChipBox | null } {
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
@@ -71,12 +84,14 @@ function draw(provider: Provider, mail: SampleMail, sorted: boolean): THREE.Canv
   ctx.fill();
 
   // priority chip only after the AI scan
+  let chip: ChipBox | null = null;
   if (sorted) {
     ctx.font = font(24, 700);
     const textWidth = ctx.measureText(mail.chip).width;
     const chipWidth = textWidth + 44;
     const x = WIDTH - 40 - chipWidth;
     const y = HEIGHT - 84;
+    chip = { cx: x + chipWidth / 2, cy: y + 24, width: chipWidth };
     ctx.fillStyle = mail.chipColor;
     ctx.globalAlpha = 0.22;
     ctx.beginPath();
@@ -93,7 +108,7 @@ function draw(provider: Provider, mail: SampleMail, sorted: boolean): THREE.Canv
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
-  return texture;
+  return { texture, chip };
 }
 
 /** Raw and sorted faces for one provider and sample mail; built once and cached. */
@@ -101,10 +116,33 @@ export function getCardTextures(provider: Provider, mail: SampleMail): CardTextu
   const key = `${provider.name}|${mail.subject}`;
   let textures = cache.get(key);
   if (!textures) {
-    textures = { raw: draw(provider, mail, false), sorted: draw(provider, mail, true) };
+    const raw = draw(provider, mail, false);
+    const sorted = draw(provider, mail, true);
+    textures = { raw: raw.texture, sorted: sorted.texture, chip: sorted.chip };
     cache.set(key, textures);
   }
   return textures;
+}
+
+let glowTexture: THREE.CanvasTexture | null = null;
+
+/** Soft radial glow (white centre fading to transparent); tinted by the material colour. */
+export function getGlowTexture(): THREE.CanvasTexture {
+  if (glowTexture) return glowTexture;
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2D canvas is not available");
+  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.35, "rgba(255,255,255,0.45)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 128, 128);
+  glowTexture = new THREE.CanvasTexture(canvas);
+  glowTexture.colorSpace = THREE.SRGBColorSpace;
+  return glowTexture;
 }
 
 /** Frees GPU memory when the hero scene unmounts. */
@@ -114,4 +152,6 @@ export function disposeCardTextures(): void {
     sorted.dispose();
   }
   cache.clear();
+  glowTexture?.dispose();
+  glowTexture = null;
 }
