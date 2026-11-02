@@ -1,6 +1,22 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "@/core/db";
-import { etEmails, etSyncRuns } from "../db/schema";
+import { etEmailAnalysis, etEmails, etSyncRuns } from "../db/schema";
+
+/** What the AI made of an email; null on the preview while it has not been analyzed. */
+export type AnalysisPreview = {
+  category:
+    | "needs_reply"
+    | "follow_up_needed"
+    | "lead_reply"
+    | "invoice_or_payment"
+    | "newsletter_or_promo"
+    | "fyi_only"
+    | "spam";
+  priority: number;
+  needsReply: boolean;
+  summary: string;
+  suggestedAction: string;
+};
 
 export type EmailPreview = {
   id: string;
@@ -10,15 +26,19 @@ export type EmailPreview = {
   snippet: string;
   receivedAt: Date;
   status: "unread" | "read";
+  analysis: AnalysisPreview | null;
 };
 
-/** The tenant's newest emails, without their full bodies. Always scoped to the tenant. */
+/**
+ * The tenant's newest emails with their AI analysis (when there is one), without full bodies.
+ * Always scoped to the tenant, on both the emails and the analysis.
+ */
 export async function listLatestEmails(
   db: Database,
   tenantId: string,
   limit = 20,
 ): Promise<EmailPreview[]> {
-  return db
+  const rows = await db
     .select({
       id: etEmails.id,
       fromAddress: etEmails.fromAddress,
@@ -27,11 +47,29 @@ export async function listLatestEmails(
       snippet: etEmails.snippet,
       receivedAt: etEmails.receivedAt,
       status: etEmails.status,
+      analysisStatus: etEmailAnalysis.status,
+      category: etEmailAnalysis.category,
+      priority: etEmailAnalysis.priority,
+      needsReply: etEmailAnalysis.needsReply,
+      summary: etEmailAnalysis.summary,
+      suggestedAction: etEmailAnalysis.suggestedAction,
     })
     .from(etEmails)
+    .leftJoin(
+      etEmailAnalysis,
+      and(eq(etEmailAnalysis.emailId, etEmails.id), eq(etEmailAnalysis.tenantId, tenantId)),
+    )
     .where(eq(etEmails.tenantId, tenantId))
     .orderBy(desc(etEmails.receivedAt))
     .limit(limit);
+
+  return rows.map(({ analysisStatus, category, priority, needsReply, summary, suggestedAction, ...email }) => ({
+    ...email,
+    analysis:
+      analysisStatus === "analyzed" && category && priority !== null && summary && suggestedAction
+        ? { category, priority, needsReply: needsReply ?? false, summary, suggestedAction }
+        : null,
+  }));
 }
 
 /** How many emails are stored for each of the tenant's accounts (account id to count). */
