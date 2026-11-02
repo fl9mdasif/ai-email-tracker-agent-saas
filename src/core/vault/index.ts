@@ -130,6 +130,33 @@ export async function listAccounts(db: Database, tenantId: string): Promise<Acco
     .orderBy(desc(connectedAccounts.createdAt));
 }
 
+/** One account's metadata, or null when it is not this tenant's. */
+export async function getAccount(
+  db: Database,
+  tenantId: string,
+  accountId: string,
+): Promise<AccountMeta | null> {
+  const [row] = await db
+    .select(metaColumns)
+    .from(connectedAccounts)
+    .where(and(eq(connectedAccounts.id, accountId), eq(connectedAccounts.tenantId, tenantId)))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Records a successful sync: sets the time and clears any earlier error. */
+export async function markAccountSynced(
+  db: Database,
+  tenantId: string,
+  accountId: string,
+  at: Date,
+): Promise<void> {
+  await db
+    .update(connectedAccounts)
+    .set({ lastSyncedAt: at, status: "connected", statusMessage: null })
+    .where(and(eq(connectedAccounts.id, accountId), eq(connectedAccounts.tenantId, tenantId)));
+}
+
 /** Returns true when an account of this tenant was deleted. */
 export async function deleteAccount(
   db: Database,
