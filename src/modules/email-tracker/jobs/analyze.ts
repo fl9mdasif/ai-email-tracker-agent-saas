@@ -20,7 +20,7 @@ export const analyzeTenantJob = inngest.createFunction(
     const outcome = await step.run("analyze-batch", () => analyzePendingEmails(getDb(), tenantId));
 
     const handled = outcome.analyzed + outcome.failed;
-    if (!outcome.stoppedNotConfigured && handled >= BATCH_SIZE) {
+    if (!outcome.stoppedBecause && handled >= BATCH_SIZE) {
       await step.sendEvent("continue", { name: ANALYZE_TENANT_EVENT, data: { tenantId } });
     }
     return outcome;

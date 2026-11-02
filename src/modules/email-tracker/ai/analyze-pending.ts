@@ -2,6 +2,7 @@ import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { desc } from "drizzle-orm";
 import type { Database } from "@/core/db";
 import { connectedAccounts } from "@/core/db/schema";
+import type { ModelFailureReason } from "@/core/llm/gateway";
 import { etEmailAnalysis, etEmails } from "../db/schema";
 import { type AnalyzeEmailResult, analyzeEmail } from "./analyze-email";
 import type { PromptEmail } from "./prompts";
@@ -18,11 +19,14 @@ export type AnalyzeDeps = {
   ) => Promise<AnalyzeEmailResult>;
 };
 
+/** Failures of the service itself (not of one email): the run stops and no attempt is used up. */
+const PAUSING_REASONS = new Set<ModelFailureReason>(["not_configured", "quota_exhausted", "auth_failed"]);
+
 export type AnalyzePendingOutcome = {
   analyzed: number;
   failed: number;
-  /** True when the run stopped early because the AI service is not set up. */
-  stoppedNotConfigured: boolean;
+  /** Set when the run stopped early because the AI service itself is unavailable. */
+  stoppedBecause: "not_configured" | "quota_exhausted" | "auth_failed" | null;
 };
 
 const defaultDeps: AnalyzeDeps = { analyze: (email, context) => analyzeEmail(email, context) };
@@ -70,7 +74,7 @@ export async function analyzePendingEmails(
     .orderBy(desc(etEmails.receivedAt))
     .limit(limit);
 
-  const outcome: AnalyzePendingOutcome = { analyzed: 0, failed: 0, stoppedNotConfigured: false };
+  const outcome: AnalyzePendingOutcome = { analyzed: 0, failed: 0, stoppedBecause: null };
 
   for (const row of pending) {
     const result = await deps.analyze(
@@ -85,9 +89,10 @@ export async function analyzePendingEmails(
       { tenantId, mailboxOwner: row.mailboxOwner },
     );
 
-    if (!result.ok && result.reason === "not_configured") {
-      // No key or model: do not burn attempts on every email, just stop and report it.
-      outcome.stoppedNotConfigured = true;
+    if (!result.ok && PAUSING_REASONS.has(result.reason)) {
+      // No key, no credits or a rejected key: every email would fail the same way, so do not
+      // use up their attempts. Stop here; the next run picks the same emails up again.
+      outcome.stoppedBecause = result.reason as NonNullable<AnalyzePendingOutcome["stoppedBecause"]>;
       break;
     }
 

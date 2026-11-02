@@ -1,4 +1,4 @@
-import { type CallModelFn, callModel } from "@/core/llm/gateway";
+import { type CallModelFn, type ModelFailureReason, callModel } from "@/core/llm/gateway";
 import { ANALYSIS_SYSTEM_PROMPT, type PromptEmail, buildAnalysisPrompt } from "./prompts";
 import {
   type EmailAnalysis,
@@ -11,7 +11,7 @@ export const ANALYSIS_USAGE_TAG = "email-analysis";
 
 export type AnalyzeEmailResult =
   | { ok: true; analysis: EmailAnalysis; model: string }
-  | { ok: false; reason: "not_configured" | "invalid_output" | "provider_error"; message: string };
+  | { ok: false; reason: ModelFailureReason; message: string };
 
 /**
  * Classifies and summarizes one email. It only reads the email it is given and only talks to

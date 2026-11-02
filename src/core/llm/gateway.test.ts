@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Database } from "@/core/db";
 import { createGateway } from "./gateway";
-import type { LlmProvider, LlmRequest, LlmResponse } from "./types";
+import { LlmProviderError, type LlmProvider, type LlmRequest, type LlmResponse } from "./types";
 
 const schema = z.object({ answer: z.string().min(1) });
 const responseJsonSchema = {
@@ -106,6 +106,34 @@ describe("callModel", () => {
     expect(result).toMatchObject({ ok: false, reason: "provider_error" });
     expect(JSON.stringify(result)).not.toContain("sk-secret-123");
     expect(usageRows.map((row) => row.status)).toEqual(["error", "error"]);
+  });
+
+  it("stops at once, without retrying, when the account has no credits left", async () => {
+    const { call, requests, usageRows } = setup([new LlmProviderError("quota"), reply('{"answer":"never reached"}')]);
+    const result = await call();
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "quota_exhausted",
+      message: "The AI service has no credits left. Add credits to the OpenAI account and analysis will resume.",
+    });
+    expect(requests).toHaveLength(1); // retrying cannot help
+    expect(usageRows.map((row) => row.status)).toEqual(["quota_exhausted"]);
+  });
+
+  it("stops at once when the API key is rejected", async () => {
+    const { call, requests, usageRows } = setup([new LlmProviderError("auth")]);
+    const result = await call();
+
+    expect(result).toMatchObject({ ok: false, reason: "auth_failed" });
+    expect(requests).toHaveLength(1);
+    expect(usageRows.map((row) => row.status)).toEqual(["auth_failed"]);
+  });
+
+  it("still retries once for an ordinary provider error", async () => {
+    const { call, requests } = setup([new LlmProviderError("other"), new LlmProviderError("other")]);
+    expect(await call()).toMatchObject({ ok: false, reason: "provider_error" });
+    expect(requests).toHaveLength(2);
   });
 
   it("recovers when only the first attempt hits a provider error", async () => {

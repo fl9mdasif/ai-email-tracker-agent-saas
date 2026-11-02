@@ -90,7 +90,7 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
     const d = deps(good);
     const outcome = await pending.analyzePendingEmails(db, tenantA, d);
 
-    expect(outcome).toEqual({ analyzed: 3, failed: 0, stoppedNotConfigured: false });
+    expect(outcome).toEqual({ analyzed: 3, failed: 0, stoppedBecause: null });
     expect(d.analyze).toHaveBeenCalledTimes(3);
     expect(d.analyze).toHaveBeenCalledWith(
       expect.objectContaining({ subject: expect.stringContaining("Analysis test") }),
@@ -118,7 +118,7 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
 
   it("never reads or analyzes another tenant's mail", async () => {
     const d = deps(good);
-    expect(await pending.analyzePendingEmails(db, tenantB, d)).toEqual({ analyzed: 0, failed: 0, stoppedNotConfigured: false });
+    expect(await pending.analyzePendingEmails(db, tenantB, d)).toEqual({ analyzed: 0, failed: 0, stoppedBecause: null });
     expect(d.analyze).not.toHaveBeenCalled();
     expect(await analysisRows(tenantB)).toHaveLength(0);
   }, 60_000);
@@ -165,8 +165,34 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
     await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
     const unconfigured = deps({ ok: false, reason: "not_configured", message: "The AI service is not configured." });
     const outcome = await pending.analyzePendingEmails(db, tenantA, unconfigured);
-    expect(outcome).toEqual({ analyzed: 0, failed: 0, stoppedNotConfigured: true });
+    expect(outcome).toEqual({ analyzed: 0, failed: 0, stoppedBecause: "not_configured" });
     expect(unconfigured.analyze).toHaveBeenCalledTimes(1);
+    expect(await analysisRows(tenantA)).toHaveLength(0);
+  }, 90_000);
+
+  it("pauses without using up any email's attempts when the credits run out, then resumes", async () => {
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
+
+    // Three scheduler ticks while the account has no credits: nothing is stored, nothing is used up.
+    const noCredits = deps({ ok: false, reason: "quota_exhausted", message: "The AI service has no credits left." });
+    for (let tick = 0; tick < 3; tick += 1) {
+      expect(await pending.analyzePendingEmails(db, tenantA, noCredits)).toEqual({
+        analyzed: 0,
+        failed: 0,
+        stoppedBecause: "quota_exhausted",
+      });
+    }
+    expect(noCredits.analyze).toHaveBeenCalledTimes(3); // one call per tick, not one per email
+    expect(await analysisRows(tenantA)).toHaveLength(0);
+
+    // Credits are added: the very same emails are analyzed on the next run.
+    expect(await pending.analyzePendingEmails(db, tenantA, deps(good))).toMatchObject({ analyzed: 3, failed: 0 });
+  }, 90_000);
+
+  it("pauses the same way when the API key is rejected", async () => {
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
+    const rejected = deps({ ok: false, reason: "auth_failed", message: "The AI service rejected the API key." });
+    expect(await pending.analyzePendingEmails(db, tenantA, rejected)).toMatchObject({ stoppedBecause: "auth_failed" });
     expect(await analysisRows(tenantA)).toHaveLength(0);
   }, 90_000);
 
