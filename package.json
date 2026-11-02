@@ -11,6 +11,7 @@
     "db:check": "tsx scripts/db-check.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
     "db:seed": "tsx scripts/db-seed.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
@@ -26,7 +27,9 @@
     "cn": "^0.5.1",
     "drizzle-orm": "^0.45.4",
     "imapflow": "^2.10.0",
+    "inngest": "^4.26.2",
     "lucide-react": "^1.66.0",
+    "mailparser": "^3.14.1",
     "motion": "^14.9.0",
     "next": "16.4.3",
     "next-auth": "^5.0.0-beta.32",
@@ -41,6 +44,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/imapflow": "^1.0.23",
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",

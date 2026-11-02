@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getConfig } from "@/core/config";
 import { getConnector } from "@/core/connectors/registry";
 import { getDb } from "@/core/db";
+import { inngest } from "@/core/jobs/client";
 import { requireModule } from "@/core/modules/guard";
-import { AccountExistsError, deleteAccount, saveCredentials } from "@/core/vault";
+import { AccountExistsError, deleteAccount, getAccount, saveCredentials } from "@/core/vault";
+import { SYNC_ACCOUNT_EVENT } from "@/modules/email-tracker/jobs/events";
 import { registerEmailTrackerConnectors } from "@/modules/email-tracker/connectors";
 import { IMAP_PROVIDER } from "@/modules/email-tracker/connectors/imap";
 import { IMAP_PRESETS } from "@/modules/email-tracker/connectors/imap/presets";
@@ -84,6 +87,33 @@ export async function accountFormAction(
 
   revalidatePath("/dashboard/accounts");
   return { status: "success", message: "Account connected.", fieldErrors: {} };
+}
+
+/**
+ * Queues a background sync for one account. The sync itself never runs inside this request:
+ * a worker (Inngest) picks the event up and runs it.
+ */
+export async function syncAccountNowAction(accountId: string): Promise<{ ok: boolean; message: string }> {
+  const session = await requireModule(MODULE_KEY);
+  if (!/^[0-9a-f-]{36}$/i.test(accountId)) return { ok: false, message: "Account not found." };
+
+  // Only this tenant's own accounts can be synced.
+  const account = await getAccount(getDb(), session.tenantId, accountId);
+  if (!account) return { ok: false, message: "Account not found." };
+
+  try {
+    await inngest.send({
+      name: SYNC_ACCOUNT_EVENT,
+      data: { tenantId: session.tenantId, accountId },
+    });
+  } catch {
+    const message =
+      getConfig().NODE_ENV === "production"
+        ? "Could not queue the sync. Please try again in a moment."
+        : "Could not reach the background worker. Start it with npm run inngest:dev and try again.";
+    return { ok: false, message };
+  }
+  return { ok: true, message: "Sync queued. New mail will appear in a moment." };
 }
 
 /** Removes an account of the signed-in tenant, together with its stored credentials. */

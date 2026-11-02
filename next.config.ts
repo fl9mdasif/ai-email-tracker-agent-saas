@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   // Node-only mail libraries run as plain server packages instead of being bundled.
-  serverExternalPackages: ["imapflow"],
+  serverExternalPackages: ["imapflow", "mailparser"],
   partialPrefetching: true,
   turbopack: {
     rules: {
