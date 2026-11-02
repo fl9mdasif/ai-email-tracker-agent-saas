@@ -241,7 +241,9 @@
 }
 
 .btn-gradient {
-  background: var(--lp-gradient);
+  /* The brand gradient with its light end nudged (#4a6cf7 to #4869f5) so white button text
+     reaches 4.5:1 contrast; the logo keeps the exact brand gradient. */
+  background: linear-gradient(135deg, #4869f5, #2b3fd0);
   box-shadow: 0 10px 30px -12px rgba(52, 82, 225, 0.6);
 }
 
