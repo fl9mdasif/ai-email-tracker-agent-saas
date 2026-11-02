@@ -119,4 +119,33 @@ describe.skipIf(!configured)("vault (Neon)", () => {
     expect(await vault.deleteAccount(db, tenantA, accountId)).toBe(true);
     expect(await vault.getCredentials(db, tenantA, accountId)).toBeNull();
   });
+
+  it("stores a non-secret display brand that only the owning tenant can change", async () => {
+    const branded = await vault.saveCredentials(db, {
+      tenantId: tenantA,
+      provider: "imap-hostinger",
+      authType: "app_password",
+      label: "Branded",
+      identity: `brand-${suffix}@example.com`,
+      brand: "hostinger",
+      credentials: { password: SECRET },
+    });
+    expect(branded.brand).toBe("hostinger");
+
+    await vault.setAccountBrand(db, tenantB, branded.id, "zoho"); // someone else's account: no effect
+    expect((await vault.getAccount(db, tenantA, branded.id))?.brand).toBe("hostinger");
+
+    await vault.setAccountBrand(db, tenantA, branded.id, "zoho");
+    expect((await vault.getAccount(db, tenantA, branded.id))?.brand).toBe("zoho");
+
+    const unbranded = await vault.saveCredentials(db, {
+      tenantId: tenantA,
+      provider: "imap-hostinger",
+      authType: "app_password",
+      label: "No brand",
+      identity: `nobrand-${suffix}@example.com`,
+      credentials: { password: SECRET },
+    });
+    expect(unbranded.brand).toBeNull();
+  });
 });
