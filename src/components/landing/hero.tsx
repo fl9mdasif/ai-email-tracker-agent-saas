@@ -37,16 +37,12 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
         </p>
 
         <h1
-          className="mt-[clamp(0.75rem,3.5vh,2rem)] max-w-4xl font-display leading-[1.02] font-bold tracking-[-0.03em]"
-          style={{ fontSize: "clamp(2rem, min(5.4vw, 6.8vh), 4.75rem)" }}
+          className="mt-[clamp(0.75rem,3.5vh,2rem)] max-w-5xl font-display leading-[1.05] font-bold tracking-[-0.03em]"
+          style={{ fontSize: "clamp(2.1rem, min(6vw, 8.5vh), 5.25rem)" }}
         >
           <span className="hero-anim hero-anim-d2 block">Never miss a reply</span>
-          <span className="hero-anim hero-anim-d2 block">that closes the deal.</span>
           <span className="hero-anim hero-anim-d3 block">
-            <span className="text-gradient">Your leads</span>
-          </span>
-          <span className="hero-anim hero-anim-d4 block">
-            <span className="text-gradient">are waiting.</span>
+            that <span className="text-gradient">closes the deal.</span>
           </span>
         </h1>
 
