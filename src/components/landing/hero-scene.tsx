@@ -1,187 +1,307 @@
 "use client";
 
-import { Html, RoundedBox } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useTheme } from "next-themes";
-import { useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import {
+  CARD_PIXELS,
+  type CardTextures,
+  disposeCardTextures,
+  getCardTextures,
+  getGlowTexture,
+} from "./email-textures";
+import { PROVIDERS, SAMPLE_MAILS } from "./providers";
 
-const LANES = [
-  { label: "Reply", color: "#7c6cff", y: 1.5 },
-  { label: "Follow-up", color: "#f5a524", y: 0.5 },
-  { label: "Hot lead", color: "#ef4444", y: -0.5 },
-  { label: "FYI", color: "#38bdf8", y: -1.5 },
-] as const;
+const Z_FAR = -46;
+const Z_NEAR = 5;
+/** Cards switch from "raw mail" to "sorted" once they pass the scan ring. */
+const RING_Z = -14;
+const LOOP_SECONDS = 15;
+const CARD_WIDTH = 3.2;
+const CARD_HEIGHT = 2;
+/** Loopify ink (--lp-ink): the fog fades distant cards into the hero background. */
+const BACKGROUND = "#0a0f2c";
 
-const EMAIL_COUNT = 20;
-const LOOP_SECONDS = 9;
-const START_X = -4.4;
-const END_X = 4.0;
+/** Fly-in: each card appears in turn, 0.8 s, easing out like cubic-bezier(.16, 1, .3, 1). */
+const INTRO_DELAYS = [0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8];
+const INTRO_SECONDS = 0.8;
+/** World units the card starts behind its place (the translateZ(-200px) equivalent). */
+const INTRO_DEPTH = 8;
+/** Float: each card bobs on its own period (seconds), about 6 px tall. */
+const FLOAT_PERIODS = [3, 3.5, 4, 4.2, 3.8];
+const FLOAT_AMPLITUDE = 0.14;
+/** HOT LEAD glow pulse period in seconds. */
+const HOT_PULSE_SECONDS = 2;
+/** Orbit ring: one full turn takes this long. */
+const ORBIT_SECONDS = 30;
 
-const smooth = (u: number) => u * u * (3 - 2 * u);
-const clamp01 = (u: number) => Math.min(1, Math.max(0, u));
+const smoothstep = THREE.MathUtils.smoothstep;
+const easeOutExpo = (x: number) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
 
-type EmailSpec = { offset: number; startY: number; startZ: number; lane: number; tilt: number };
-
-function makeEmails(): EmailSpec[] {
-  return Array.from({ length: EMAIL_COUNT }, (_, i) => ({
-    offset: i / EMAIL_COUNT,
-    // Deterministic spread so the scene looks the same on every load.
-    startY: Math.sin(i * 2.399) * 1.7,
-    startZ: Math.cos(i * 1.7) * 0.9,
-    lane: (i * 7) % LANES.length,
-    tilt: Math.sin(i * 1.3) * 0.25,
-  }));
+/** Deterministic pseudo-random in [0, 1) so the scene looks the same on every load. */
+function rand(seed: number): number {
+  const value = Math.sin(seed * 127.1) * 43758.5453;
+  return value - Math.floor(value);
 }
 
-function Email({ spec, baseColor }: { spec: EmailSpec; baseColor: THREE.Color }) {
-  const group = useRef<THREE.Group>(null);
-  const material = useRef<THREE.MeshStandardMaterial>(null);
-  const laneColor = useMemo(() => new THREE.Color(LANES[spec.lane].color), [spec.lane]);
+/** Soft red glow behind a HOT LEAD chip, in card-local world units. */
+type GlowSpec = { x: number; y: number; width: number; height: number; texture: THREE.Texture };
+
+type CardSpec = {
+  offset: number;
+  x: number;
+  y: number;
+  roll: number;
+  textures: CardTextures;
+  introDelay: number;
+  floatPeriod: number;
+  floatPhase: number;
+  glow: GlowSpec | null;
+};
+
+function makeCards(count: number): CardSpec[] {
+  return Array.from({ length: count }, (_, i) => {
+    const angle = i * 2.399963; // golden angle spreads cards evenly around the axis
+    const radius = 2.4 + rand(i + 1) * 5.2;
+    const mail = SAMPLE_MAILS[(i * 3) % SAMPLE_MAILS.length];
+    const textures = getCardTextures(PROVIDERS[i % PROVIDERS.length], mail);
+    const chip = textures.chip;
+    return {
+      offset: i / count,
+      x: Math.cos(angle) * radius * 1.35,
+      y: Math.sin(angle) * radius * 0.75,
+      roll: (rand(i + 50) - 0.5) * 0.24,
+      textures,
+      introDelay: INTRO_DELAYS[i % INTRO_DELAYS.length],
+      floatPeriod: FLOAT_PERIODS[i % FLOAT_PERIODS.length],
+      floatPhase: rand(i + 80) * Math.PI * 2,
+      glow:
+        mail.chip === "HOT LEAD" && chip
+          ? {
+              x: (chip.cx / CARD_PIXELS.width - 0.5) * CARD_WIDTH,
+              y: (0.5 - chip.cy / CARD_PIXELS.height) * CARD_HEIGHT,
+              width: (chip.width / CARD_PIXELS.width) * CARD_WIDTH * 2.4,
+              height: 1,
+              texture: getGlowTexture(),
+            }
+          : null,
+    };
+  });
+}
+
+function Card({ spec }: { spec: CardSpec }) {
+  const mesh = useRef<THREE.Mesh>(null);
+  const material = useRef<THREE.MeshBasicMaterial>(null);
+  const glowMaterial = useRef<THREE.MeshBasicMaterial>(null);
 
   useFrame(({ clock }) => {
-    const node = group.current;
+    const node = mesh.current;
     const mat = material.current;
     if (!node || !mat) return;
 
-    const t = (clock.elapsedTime / LOOP_SECONDS + spec.offset) % 1;
-    const laneY = LANES[spec.lane].y;
+    const t = clock.elapsedTime;
+    const progress = (t / LOOP_SECONDS + spec.offset) % 1;
+    const loopZ = Z_FAR + (Z_NEAR - Z_FAR) * progress;
 
-    if (t < 0.5) {
-      // Inbound: drift from the left into the AI core.
-      const u = smooth(t / 0.5);
-      node.position.set(
-        THREE.MathUtils.lerp(START_X, 0, u),
-        THREE.MathUtils.lerp(spec.startY, 0, u) + Math.sin(t * 14 + spec.offset * 9) * 0.06,
-        THREE.MathUtils.lerp(spec.startZ, 0, u),
-      );
-      node.scale.setScalar(1 - 0.75 * smooth(clamp01((u - 0.7) / 0.3)));
-      mat.color.copy(baseColor);
-      mat.emissive.set("#000000");
-    } else {
-      // Outbound: leave the core, take on the lane colour, settle in the lane.
-      const u = smooth((t - 0.5) / 0.5);
-      node.position.set(
-        THREE.MathUtils.lerp(0, END_X, u),
-        THREE.MathUtils.lerp(0, laneY, u),
-        THREE.MathUtils.lerp(0, 0, u),
-      );
-      node.scale.setScalar(0.25 + 0.75 * smooth(clamp01(u / 0.25)));
-      mat.color.copy(laneColor);
-      mat.emissive.copy(laneColor).multiplyScalar(0.35);
+    // Fly-in: start deeper and smaller, settle into the loop position.
+    const intro = easeOutExpo(THREE.MathUtils.clamp((t - spec.introDelay) / INTRO_SECONDS, 0, 1));
+    // Float: gentle bob on the card's own period, only once it has arrived.
+    const bob = Math.sin((t / spec.floatPeriod) * Math.PI * 2 + spec.floatPhase) * FLOAT_AMPLITUDE * intro;
+
+    node.position.set(spec.x, spec.y + bob, loopZ - (1 - intro) * INTRO_DEPTH);
+    node.rotation.set(spec.y * 0.025, spec.x * -0.03, spec.roll);
+    node.scale.setScalar(0.5 + 0.5 * intro);
+
+    const fade = smoothstep(progress, 0, 0.1) * (1 - smoothstep(progress, 0.84, 1));
+    mat.opacity = fade * intro;
+
+    const map = loopZ > RING_Z ? spec.textures.sorted : spec.textures.raw;
+    if (mat.map !== map) mat.map = map;
+
+    // HOT LEAD glow: pulses every 2 s, only once the chip has appeared (past the ring).
+    const glow = glowMaterial.current;
+    if (glow) {
+      const chipVisible = smoothstep(loopZ, RING_Z, RING_Z + 4);
+      const pulse = 0.5 + 0.5 * Math.sin((t / HOT_PULSE_SECONDS) * Math.PI * 2);
+      glow.opacity = (0.3 + 0.5 * pulse) * chipVisible * mat.opacity;
     }
-    node.rotation.z = spec.tilt * (t < 0.5 ? 1 - t * 2 : 0);
   });
 
   return (
-    <group ref={group}>
-      <RoundedBox args={[0.62, 0.42, 0.05]} radius={0.05} smoothness={3}>
-        <meshStandardMaterial ref={material} roughness={0.45} metalness={0.1} />
-      </RoundedBox>
-      {/* envelope flap */}
-      <mesh position={[-0.15, 0.06, 0.03]} rotation={[0, 0, -0.45]}>
-        <boxGeometry args={[0.36, 0.022, 0.01]} />
-        <meshBasicMaterial color="#1a1a2e" transparent opacity={0.35} />
-      </mesh>
-      <mesh position={[0.15, 0.06, 0.03]} rotation={[0, 0, 0.45]}>
-        <boxGeometry args={[0.36, 0.022, 0.01]} />
-        <meshBasicMaterial color="#1a1a2e" transparent opacity={0.35} />
-      </mesh>
-    </group>
+    <mesh ref={mesh}>
+      <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
+      <meshBasicMaterial
+        ref={material}
+        map={spec.textures.raw}
+        transparent
+        depthWrite={false}
+        toneMapped={false}
+      />
+      {spec.glow ? (
+        <mesh position={[spec.glow.x, spec.glow.y, 0.02]}>
+          <planeGeometry args={[spec.glow.width, spec.glow.height]} />
+          <meshBasicMaterial
+            ref={glowMaterial}
+            map={spec.glow.texture}
+            color="#ef4444"
+            transparent
+            opacity={0}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+      ) : null}
+    </mesh>
   );
 }
 
-function AiCore() {
-  const shell = useRef<THREE.Mesh>(null);
-  const ring = useRef<THREE.Mesh>(null);
-  const glow = useRef<THREE.Mesh>(null);
+function Tunnel() {
+  const width = useThree((state) => state.size.width);
+  const count = width < 640 ? 12 : 20;
+  const cards = useMemo(() => makeCards(count), [count]);
 
-  useFrame(({ clock }, delta) => {
-    if (shell.current) {
-      shell.current.rotation.y += delta * 0.5;
-      shell.current.rotation.x += delta * 0.2;
-    }
-    if (ring.current) ring.current.rotation.z += delta * 0.8;
-    if (glow.current) glow.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 2.2) * 0.08);
-  });
+  useEffect(() => () => disposeCardTextures(), []);
 
-  return (
-    <group>
-      <mesh ref={glow}>
-        <sphereGeometry args={[0.55, 32, 32]} />
-        <meshStandardMaterial color="#6d5efc" emissive="#6d5efc" emissiveIntensity={1.4} />
-      </mesh>
-      <mesh ref={shell}>
-        <icosahedronGeometry args={[0.95, 1]} />
-        <meshBasicMaterial color="#9a8cff" wireframe transparent opacity={0.55} />
-      </mesh>
-      <mesh ref={ring} rotation={[Math.PI / 2.4, 0, 0]}>
-        <torusGeometry args={[1.25, 0.012, 8, 96]} />
-        <meshBasicMaterial color="#c4baff" transparent opacity={0.8} />
-      </mesh>
-      <pointLight color="#8b7dff" intensity={14} distance={8} />
-    </group>
-  );
-}
-
-function LaneMarkers() {
   return (
     <>
-      {LANES.map((lane) => (
-        <group key={lane.label} position={[END_X + 0.75, lane.y, 0]}>
-          <mesh>
-            <boxGeometry args={[0.07, 0.62, 0.07]} />
-            <meshBasicMaterial color={lane.color} />
-          </mesh>
-          <Html position={[0.55, 0, 0]} center style={{ pointerEvents: "none" }}>
-            <span
-              className="rounded-full border bg-background/80 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-foreground backdrop-blur"
-              style={{ borderColor: lane.color }}
-            >
-              {lane.label}
-            </span>
-          </Html>
-        </group>
+      {cards.map((spec, i) => (
+        <Card key={i} spec={spec} />
       ))}
     </>
+  );
+}
+
+/** Glowing portal the mail passes through; this is where the AI "reads" it. */
+function ScanRing() {
+  const ring = useRef<THREE.Mesh>(null);
+  const halo = useRef<THREE.Mesh>(null);
+
+  useFrame(({ clock }) => {
+    const pulse = Math.sin(clock.elapsedTime * 1.6);
+    ring.current?.scale.setScalar(1 + pulse * 0.025);
+    const mat = halo.current?.material as THREE.MeshBasicMaterial | undefined;
+    if (mat) mat.opacity = 0.16 + pulse * 0.05;
+  });
+
+  return (
+    <group position={[0, 0, RING_Z]}>
+      <mesh ref={ring}>
+        <torusGeometry args={[8.6, 0.05, 12, 160]} />
+        <meshBasicMaterial color="#7b93ff" toneMapped={false} />
+      </mesh>
+      <mesh ref={halo}>
+        <torusGeometry args={[8.6, 0.5, 12, 160]} />
+        <meshBasicMaterial
+          color="#3452e1"
+          transparent
+          opacity={0.16}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/** Three bright arcs with a bead each, turning slowly around the scan ring. */
+function Orbit() {
+  const group = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (group.current) group.current.rotation.z += delta * ((Math.PI * 2) / ORBIT_SECONDS);
+  });
+
+  return (
+    <group ref={group} position={[0, 0, RING_Z]}>
+      {[0, 1, 2].map((i) => (
+        <group key={i} rotation={[0, 0, (i * Math.PI * 2) / 3]}>
+          <mesh>
+            <torusGeometry args={[9.5, 0.045, 8, 120, Math.PI * 0.55]} />
+            <meshBasicMaterial color="#19d3c0" transparent opacity={0.85} toneMapped={false} />
+          </mesh>
+          <mesh position={[9.5, 0, 0]}>
+            <sphereGeometry args={[0.16, 16, 16]} />
+            <meshBasicMaterial color="#f4f6fd" toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+const DUST_COUNT = 140;
+const DUST_SPEED = 6;
+
+/** Fine light dust streaming toward the camera, faster than the cards, for extra depth. */
+function Dust() {
+  const points = useRef<THREE.Points>(null);
+  const positions = useMemo(() => {
+    const data = new Float32Array(DUST_COUNT * 3);
+    for (let i = 0; i < DUST_COUNT; i++) {
+      data[i * 3] = (rand(i + 100) - 0.5) * 30;
+      data[i * 3 + 1] = (rand(i + 300) - 0.5) * 18;
+      data[i * 3 + 2] = Z_FAR + rand(i + 500) * (Z_NEAR - Z_FAR);
+    }
+    return data;
+  }, []);
+
+  useFrame((_, delta) => {
+    const geometry = points.current?.geometry;
+    if (!geometry) return;
+    const attribute = geometry.getAttribute("position") as THREE.BufferAttribute;
+    const array = attribute.array as Float32Array;
+    for (let i = 0; i < DUST_COUNT; i++) {
+      const index = i * 3 + 2;
+      array[index] += delta * DUST_SPEED;
+      if (array[index] > Z_NEAR) array[index] = Z_FAR;
+    }
+    attribute.needsUpdate = true;
+  });
+
+  return (
+    <points ref={points}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        color="#9fb2ff"
+        size={0.09}
+        sizeAttenuation
+        transparent
+        opacity={0.8}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </points>
   );
 }
 
 /** Gentle camera parallax that follows the pointer. */
 function CameraRig() {
   useFrame(({ camera, pointer }) => {
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, pointer.x * 0.6, 0.04);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, pointer.y * 0.4, 0.04);
-    camera.lookAt(0, 0, 0);
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, pointer.x * 0.9, 0.04);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, pointer.y * 0.6, 0.04);
+    camera.lookAt(0, 0, -20);
   });
   return null;
 }
 
 export default function HeroScene({ active }: { active: boolean }) {
-  const { resolvedTheme } = useTheme();
-  const emails = useMemo(() => makeEmails(), []);
-  const baseColor = useMemo(
-    () => new THREE.Color(resolvedTheme === "dark" ? "#e3e6ff" : "#9aa0c8"),
-    [resolvedTheme],
-  );
-
   return (
     <Canvas
       dpr={[1, 1.5]}
-      camera={{ position: [0, 0, 9], fov: 42 }}
+      camera={{ position: [0, 0, 10], fov: 50, near: 0.1, far: 120 }}
       frameloop={active ? "always" : "never"}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
       aria-hidden
     >
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[3, 4, 5]} intensity={1.2} />
-      <group rotation={[0, -0.28, 0]} scale={0.95}>
-        <AiCore />
-        {emails.map((spec, i) => (
-          <Email key={i} spec={spec} baseColor={baseColor} />
-        ))}
-        <LaneMarkers />
-      </group>
+      <fog attach="fog" args={[BACKGROUND, 14, 60]} />
+      <Dust />
+      <ScanRing />
+      <Orbit />
+      <Tunnel />
       <CameraRig />
     </Canvas>
   );

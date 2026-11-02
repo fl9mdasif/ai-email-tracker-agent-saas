@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="34 51 600 600">
+  <style>
+    .ring { stroke: #0a0f2c; }
+    .env { stroke: #3452e1; }
+    @media (prefers-color-scheme: dark) {
+      .ring { stroke: #f4f6fd; }
+      .env { stroke: #7b93ff; }
+    }
+  </style>
+  <g class="ring" fill="none">
+    <path d="M334 148 A236 236 0 1 0 540 269" stroke-width="40"/>
+    <path d="M350 82 L422 146 L350 210" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g class="env" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke-width="18">
+      <path d="M190 352 V524 Q190 536 202 536 H468 Q480 536 480 524 V352"/>
+      <path d="M188 356 L228 322 M482 356 L442 322"/>
+      <path d="M190 356 L335 448 L480 356"/>
+      <path d="M196 528 L290 424 M474 528 L380 424"/>
+      <path d="M228 382 V277 Q228 266 239 266 H292 L335 251 L378 266 H431 Q442 266 442 277 V382"/>
+    </g>
+    <g stroke-width="12">
+      <circle cx="333" cy="350" r="21"/>
+      <path d="M355 328 V362 C355 380 384 380 384 352 V345"/>
+      <path d="M363 393 A52 52 0 1 1 384 345"/>
+    </g>
+  </g>
+</svg>

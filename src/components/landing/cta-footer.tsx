@@ -1,5 +1,6 @@
-import { ArrowRight, Mail } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Reveal } from "./reveal";
@@ -40,12 +41,7 @@ export function CtaFooter() {
 
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground md:flex-row">
-          <p className="flex items-center gap-2 font-medium text-foreground">
-            <span className="grid size-6 place-items-center rounded-md bg-primary text-primary-foreground">
-              <Mail className="size-3.5" />
-            </span>
-            AI Email Tracker
-          </p>
+          <Logo markClassName="size-7" className="gap-2" />
           <nav aria-label="Footer" className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {FOOTER_LINKS.map((link) => (
               <a key={link.href} href={link.href} className="transition-colors hover:text-foreground">
@@ -53,7 +49,7 @@ export function CtaFooter() {
               </a>
             ))}
           </nav>
-          <p>&copy; AI Email Tracker. All rights reserved.</p>
+          <p>&copy; Loopify. All rights reserved.</p>
         </div>
       </footer>
     </>

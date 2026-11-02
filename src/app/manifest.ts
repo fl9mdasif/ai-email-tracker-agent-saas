@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI Email Tracker",
-    short_name: "Email Tracker",
+    name: "Loopify",
+    short_name: "Loopify",
     description: "Know what needs your reply today.",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#5b4bdb",
+    theme_color: "#3452e1",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

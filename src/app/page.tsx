@@ -8,11 +8,11 @@ import { Trust } from "@/components/landing/trust";
 import { UseCases } from "@/components/landing/use-cases";
 
 export const metadata: Metadata = {
-  title: "AI Email Tracker: know what needs your reply today",
+  title: "Loopify: know what needs your reply today",
   description:
     "An AI assistant that reads your inboxes and outreach tools, shows what needs a reply and who needs a follow-up, and drafts the message. You always click Send.",
   openGraph: {
-    title: "AI Email Tracker",
+    title: "Loopify",
     description: "Know what needs your reply today. The AI drafts, you click Send.",
     type: "website",
   },

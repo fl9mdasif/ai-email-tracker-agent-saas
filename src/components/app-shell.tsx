@@ -1,15 +1,19 @@
 "use client";
 
-import { Inbox, type LucideIcon } from "lucide-react";
+import { Inbox, Plug, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
 // Each milestone adds its own entries (Needs reply, Follow-ups, Chat, Settings).
-const NAV_ITEMS: NavItem[] = [{ href: "/dashboard", label: "Today", icon: Inbox }];
+const NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Today", icon: Inbox },
+  { href: "/dashboard/accounts", label: "Accounts", icon: Plug },
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,7 +21,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
       <aside className="hidden border-r bg-sidebar p-4 md:flex md:flex-col md:gap-6">
-        <p className="px-2 text-lg font-semibold">AI Email Tracker</p>
+        <Link href="/dashboard" aria-label="Loopify dashboard" className="px-2">
+          <Logo />
+        </Link>
         <nav className="flex flex-col gap-1" aria-label="Main">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
             <Link
@@ -41,7 +47,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-screen flex-col pb-16 md:pb-0">
         <header className="flex items-center justify-between border-b px-4 py-3 md:hidden">
-          <p className="font-semibold">AI Email Tracker</p>
+          <Link href="/dashboard" aria-label="Loopify dashboard">
+            <Logo markClassName="size-7" className="gap-2" />
+          </Link>
           <ThemeToggle />
         </header>
         <div className="flex-1 p-4 md:p-8">{children}</div>
