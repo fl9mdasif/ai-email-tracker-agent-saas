@@ -235,3 +235,33 @@
     animation: none;
   }
 }
+
+/* CSS 3D tunnel used by the hero fallback. */
+@keyframes tunnel-fly {
+  0% {
+    transform: translate3d(var(--x), var(--y), -1400px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--x), var(--y), 380px);
+    opacity: 0;
+  }
+}
+
+.tunnel-card {
+  transform: translate3d(var(--x), var(--y), var(--z));
+  animation: tunnel-fly 10s linear infinite;
+  animation-delay: var(--d);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tunnel-card {
+    animation: none;
+  }
+}

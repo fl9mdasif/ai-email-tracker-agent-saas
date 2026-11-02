@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { PROVIDERS } from "./providers";
 
 const STATS = [
   { value: "AES-256", label: "Credential encryption" },
@@ -9,15 +10,7 @@ const STATS = [
   { value: "0", label: "Emails sent without you" },
 ];
 
-const INTEGRATIONS = [
-  "Gmail",
-  "Outlook",
-  "Zoho Mail",
-  "Hostinger",
-  "Instantly",
-  "Apollo",
-  "Brevo",
-];
+const INTEGRATIONS = PROVIDERS.map((provider) => provider.name);
 
 /** Full-bleed dark hero. The 3D (or static) visual sits behind the text on the right. */
 export function Hero({ visual }: { visual: React.ReactNode }) {
