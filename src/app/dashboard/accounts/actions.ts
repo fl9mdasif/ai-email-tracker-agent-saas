@@ -8,6 +8,7 @@ import { inngest } from "@/core/jobs/client";
 import { requireModule } from "@/core/modules/guard";
 import { AccountExistsError, deleteAccount, getAccount, saveCredentials } from "@/core/vault";
 import { SYNC_ACCOUNT_EVENT } from "@/modules/email-tracker/jobs/events";
+import { brandForPreset } from "@/modules/email-tracker/providers/brands";
 import { registerEmailTrackerConnectors } from "@/modules/email-tracker/connectors";
 import { IMAP_PROVIDER } from "@/modules/email-tracker/connectors/imap";
 import { IMAP_PRESETS } from "@/modules/email-tracker/connectors/imap/presets";
@@ -75,6 +76,7 @@ export async function accountFormAction(
       authType: connector.authType,
       label: parsed.data.label || IMAP_PRESETS[parsed.data.preset].label,
       identity: credentials.user,
+      brand: brandForPreset(parsed.data.preset),
       credentials,
     });
   } catch (error) {
@@ -86,7 +88,7 @@ export async function accountFormAction(
   }
 
   revalidatePath("/dashboard/accounts");
-  return { status: "success", message: "Account connected.", fieldErrors: {} };
+  return { status: "success", message: "Account connected.", fieldErrors: {}, saved: true };
 }
 
 /**
