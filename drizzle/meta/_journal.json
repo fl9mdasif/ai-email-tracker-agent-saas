@@ -8,6 +8,13 @@
       "when": 1793601037582,
       "tag": "0000_chunky_puff_adder",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793608343363,
+      "tag": "0001_nifty_kronos",
+      "breakpoints": true
     }
   ]
 }
