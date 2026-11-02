@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, type LucideIcon } from "lucide-react";
+import { Inbox, Plug, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
@@ -10,7 +10,10 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
 // Each milestone adds its own entries (Needs reply, Follow-ups, Chat, Settings).
-const NAV_ITEMS: NavItem[] = [{ href: "/dashboard", label: "Today", icon: Inbox }];
+const NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Today", icon: Inbox },
+  { href: "/dashboard/accounts", label: "Accounts", icon: Plug },
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
