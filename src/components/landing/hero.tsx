@@ -41,7 +41,7 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
           style={{ fontSize: "clamp(2rem, min(5.4vw, 6.8vh), 4.75rem)" }}
         >
           <span className="hero-anim hero-anim-d2 block">Never miss a reply</span>
-          <span className="hero-anim hero-anim-d2 block">that matters.</span>
+          <span className="hero-anim hero-anim-d2 block">that closes the deal.</span>
           <span className="hero-anim hero-anim-d3 block">
             <span className="text-gradient">Your leads</span>
           </span>
