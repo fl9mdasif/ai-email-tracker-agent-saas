@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/core/auth";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LatestMail } from "./latest-mail";
+import { MailSkeleton } from "./mail-skeleton";
 
 async function DashboardContent() {
   const session = await auth();
@@ -29,10 +31,10 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col items-start gap-4">
       <h1 className="font-display text-2xl font-semibold">Today</h1>
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Skeleton className="h-9 w-64" />}>
         <DashboardContent />
       </Suspense>
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading mail...</p>}>
+      <Suspense fallback={<MailSkeleton />}>
         <LatestMail />
       </Suspense>
     </div>

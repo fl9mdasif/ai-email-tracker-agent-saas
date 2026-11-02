@@ -4,6 +4,8 @@ export type AccountField = "preset" | "email" | "password" | "label";
 export type AccountFormState = {
   status: "idle" | "success" | "error";
   message: string;
+  /** True only after the account was actually saved (not after a plain connection test). */
+  saved?: boolean;
   fieldErrors: Partial<Record<AccountField, string>>;
 };
 

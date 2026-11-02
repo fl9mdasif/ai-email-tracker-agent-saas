@@ -88,7 +88,7 @@ export async function accountFormAction(
   }
 
   revalidatePath("/dashboard/accounts");
-  return { status: "success", message: "Account connected.", fieldErrors: {} };
+  return { status: "success", message: "Account connected.", fieldErrors: {}, saved: true };
 }
 
 /**

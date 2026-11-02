@@ -363,7 +363,8 @@
   .card-fly,
   .card-float,
   .hot-glow,
-  .orbit-ring {
+  .orbit-ring,
+  .animate-pulse {
     animation: none;
   }
 }
