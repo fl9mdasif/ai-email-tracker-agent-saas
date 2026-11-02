@@ -2,7 +2,11 @@ import { MailPlus } from "lucide-react";
 import { auth } from "@/core/auth";
 import { getDb } from "@/core/db";
 import { listAccounts } from "@/core/vault";
-import { listRecentSyncRuns, type SyncRunSummary } from "@/modules/email-tracker/queries/emails";
+import {
+  countEmailsByAccount,
+  listRecentSyncRuns,
+  type SyncRunSummary,
+} from "@/modules/email-tracker/queries/emails";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DisconnectButton } from "./disconnect-button";
@@ -15,13 +19,14 @@ const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+/** What the most recent check found. This is about new mail only, not the total stored. */
 function describeLastRun(run: SyncRunSummary | undefined): string | null {
   if (!run) return null;
-  if (run.status === "running") return "Sync in progress...";
+  if (run.status === "running") return "checking now...";
   if (run.status === "error") return null; // the account's error message is shown instead
   return run.insertedCount === 0
-    ? "Last sync: no new mail."
-    : `Last sync: ${run.insertedCount} new ${run.insertedCount === 1 ? "email" : "emails"}.`;
+    ? "no new mail"
+    : `${run.insertedCount} new ${run.insertedCount === 1 ? "email" : "emails"}`;
 }
 
 /** The signed-in tenant's connected accounts. Shows metadata only, never any secret. */
@@ -29,9 +34,10 @@ export async function AccountsList() {
   const session = await auth();
   if (!session?.tenantId) return null;
   const db = getDb();
-  const [accounts, runs] = await Promise.all([
+  const [accounts, runs, storedCounts] = await Promise.all([
     listAccounts(db, session.tenantId),
     listRecentSyncRuns(db, session.tenantId),
+    countEmailsByAccount(db, session.tenantId),
   ]);
   // Runs are newest first, so the first one seen for an account is its latest.
   const latestRun = new Map<string, SyncRunSummary>();
@@ -60,6 +66,7 @@ export async function AccountsList() {
           <ul className="divide-y">
             {accounts.map((account) => {
               const lastRun = describeLastRun(latestRun.get(account.id));
+              const storedCount = storedCounts.get(account.id) ?? 0;
               return (
                 <li key={account.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0 flex-1">
@@ -69,9 +76,14 @@ export async function AccountsList() {
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {account.lastSyncedAt
-                        ? `Synced ${dateTimeFormat.format(account.lastSyncedAt)} UTC`
+                        ? `Last checked ${dateTimeFormat.format(account.lastSyncedAt)} UTC`
                         : "Not synced yet."}
-                      {lastRun ? ` ${lastRun}` : ""}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {storedCount} {storedCount === 1 ? "email" : "emails"} stored
+                      </span>
+                      {lastRun ? ` · last check: ${lastRun}` : ""}
                     </p>
                     {account.status === "error" && account.statusMessage ? (
                       <p className="mt-1 text-sm text-destructive">{account.statusMessage}</p>

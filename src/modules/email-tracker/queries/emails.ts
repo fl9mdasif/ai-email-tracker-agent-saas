@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { Database } from "@/core/db";
 import { etEmails, etSyncRuns } from "../db/schema";
 
@@ -32,6 +32,19 @@ export async function listLatestEmails(
     .where(eq(etEmails.tenantId, tenantId))
     .orderBy(desc(etEmails.receivedAt))
     .limit(limit);
+}
+
+/** How many emails are stored for each of the tenant's accounts (account id to count). */
+export async function countEmailsByAccount(
+  db: Database,
+  tenantId: string,
+): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ accountId: etEmails.accountId, total: sql<number>`count(*)::int` })
+    .from(etEmails)
+    .where(eq(etEmails.tenantId, tenantId))
+    .groupBy(etEmails.accountId);
+  return new Map(rows.map((row) => [row.accountId, row.total]));
 }
 
 export type SyncRunSummary = {
