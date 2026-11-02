@@ -1,3 +1,4 @@
+import { Logo } from "@/components/brand/logo";
 import { signIn } from "@/core/auth";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,7 @@ export default function LoginPage() {
         }}
         className="flex w-full max-w-sm flex-col gap-4 rounded-xl border bg-card p-8"
       >
+        <Logo className="mb-2" />
         <h1 className="text-2xl font-semibold">Sign in</h1>
         <p className="text-sm text-muted-foreground">Use your Google account to continue.</p>
         <Button type="submit">Continue with Google</Button>
