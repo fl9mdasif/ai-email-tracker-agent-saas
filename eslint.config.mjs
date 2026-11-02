@@ -23,8 +23,10 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Module code reads config through @/core/config only.
+    // Module code reads config through @/core/config only. Tests are exempt: they check
+    // whether the database is configured before running the integration suites.
     files: ["src/modules/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-properties": [
         "error",
