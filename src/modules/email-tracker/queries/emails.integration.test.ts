@@ -86,6 +86,12 @@ describe.skipIf(!configured)("email queries (Neon)", () => {
     expect(await queries.listRecentSyncRuns(db, tenantB)).toEqual([]);
   }, 60_000);
 
+  it("counts the stored emails per account, scoped to the tenant", async () => {
+    const counts = await queries.countEmailsByAccount(db, tenantA);
+    expect(counts.get(accountA)).toBe(3);
+    expect((await queries.countEmailsByAccount(db, tenantB)).size).toBe(0);
+  }, 60_000);
+
   it("lists the tenant's own sync runs", async () => {
     const runs = await queries.listRecentSyncRuns(db, tenantA);
     expect(runs).toHaveLength(1);

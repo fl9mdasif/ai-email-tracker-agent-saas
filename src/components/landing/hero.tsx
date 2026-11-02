@@ -15,9 +15,9 @@ const INTEGRATIONS = PROVIDERS.map((provider) => provider.name);
 /** Full-bleed dark hero. The 3D (or static) visual sits behind the text on the right. */
 export function Hero({ visual }: { visual: React.ReactNode }) {
   return (
-    // Exactly one screen: the 3.5rem is the sticky header, so header + hero fill 100svh and
-    // nothing from the next section peeks in. Spacing and type scale with the screen height.
-    <section className="relative isolate flex h-[calc(100svh-3.5rem)] min-h-[600px] flex-col overflow-hidden bg-ink text-white">
+    // Exactly one screen. The navbar floats over the top of the hero (it is fixed and 3.5rem tall),
+    // so the content below starts under it. Spacing and type scale with the screen height.
+    <section className="relative isolate flex h-svh min-h-[640px] flex-col overflow-hidden bg-ink text-white">
       {/* visual layer */}
       <div aria-hidden className="absolute inset-0 -z-10">
         <div className="absolute inset-y-0 right-0 w-full opacity-50 md:w-[66%] md:opacity-100">
@@ -30,29 +30,26 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
         <div className="pointer-events-none absolute -right-32 bottom-0 size-[480px] rounded-full bg-brand-teal/15 blur-[120px]" />
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col justify-center px-4 pt-[2vh] pb-[1vh]">
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col justify-center px-4 pt-[calc(3.5rem+1vh)] pb-[1vh]">
         <p className="hero-anim hero-anim-d1 inline-flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 font-mono text-[11px] tracking-[0.18em] text-white/80 uppercase backdrop-blur-md">
           <span className="animate-pulse-dot size-2 rounded-full bg-brand-teal" />
           AI inbox assistant
         </p>
 
         <h1
-          className="mt-[clamp(0.75rem,3.5vh,2rem)] max-w-4xl font-display leading-[1.02] font-bold tracking-[-0.03em]"
-          style={{ fontSize: "clamp(2.3rem, min(6.6vw, 9vh), 5.75rem)" }}
+          className="mt-[clamp(0.75rem,3.5vh,2rem)] max-w-5xl font-display leading-[1.05] font-bold tracking-[-0.03em]"
+          style={{ fontSize: "clamp(2.1rem, min(6vw, 8.5vh), 5.25rem)" }}
         >
-          <span className="hero-anim hero-anim-d2 block">Know what needs</span>
-          <span className="hero-anim hero-anim-d3 block">your reply,</span>
-          <span className="hero-anim hero-anim-d4 block">
-            <span className="text-gradient">today.</span>
+          <span className="hero-anim hero-anim-d2 block">Never miss a reply</span>
+          <span className="hero-anim hero-anim-d3 block">
+            that <span className="text-gradient">closes the deal.</span>
           </span>
         </h1>
 
         <p className="hero-anim hero-anim-d4 mt-[clamp(0.75rem,3vh,2rem)] max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
-          Loopify reads your inboxes and outreach tools, tells you who to answer and follow
-          up with, and drafts the reply. You review it and click Send. Nothing goes out without you.
-        </p>
-        <p className="hero-anim hero-anim-d5 mt-3 max-w-xl text-base leading-relaxed text-white/50 [@media(max-height:760px)]:hidden">
-          Connects to Gmail, Outlook, Zoho, Hostinger, Instantly and Apollo.
+          Loopify connects to Gmail, Outlook, Zoho, Hostinger, Instantly and Apollo — reads every
+          thread, scores your hot leads, and drafts the follow-up. You review it and click Send.
+          Nothing goes out without you.
         </p>
 
         <div className="hero-anim hero-anim-d5 mt-[clamp(1rem,4vh,2.5rem)] flex flex-wrap items-center gap-3">
@@ -72,22 +69,25 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
             See how it works
           </a>
         </div>
-      </div>
 
-      <div className="mx-auto w-full max-w-6xl shrink-0 px-4 pb-[2vh]">
-        <dl className="hero-anim hero-anim-d5 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-white/10 pt-[2vh] md:grid-cols-4">
+        {/* The numbers sit in the hero text block as plain solid text with no background of their
+            own. The label comes first in the markup (dt before dd) and is flipped below the number
+            visually. */}
+        <dl className="hero-anim hero-anim-d5 mt-[clamp(1rem,4.5vh,2.75rem)] grid max-w-2xl grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
           {STATS.map((stat) => (
-            <div key={stat.label}>
-              <dd className="font-display text-2xl font-bold tracking-tight md:text-3xl">
-                {stat.value}
-              </dd>
-              <dt className="mt-0.5 font-mono text-[10px] tracking-[0.14em] text-white/55 uppercase md:text-[11px]">
+            <div key={stat.label} className="flex flex-col-reverse gap-0.5">
+              <dt className="font-mono text-[10px] tracking-[0.14em] text-white/55 uppercase md:text-[11px]">
                 {stat.label}
               </dt>
+              <dd className="font-display text-3xl font-bold tracking-tight text-white md:text-4xl">
+                {stat.value}
+              </dd>
             </div>
           ))}
         </dl>
+      </div>
 
+      <div className="mx-auto w-full max-w-6xl shrink-0 px-4 pb-[1.5vh]">
         <a
           href="#how"
           className="hero-anim hero-anim-d5 mt-4 inline-flex items-center gap-3 font-mono text-[11px] tracking-[0.18em] text-white/60 uppercase transition-colors hover:text-white [@media(max-height:820px)]:hidden"
