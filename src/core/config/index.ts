@@ -5,6 +5,7 @@ const envSchema = z.object({
   NEXTAUTH_URL: z.url().optional(),
   NEXTAUTH_SECRET: z.string().min(16).optional(),
   DATABASE_URL: z.string().min(1).optional(),
+  DATABASE_URL_UNPOOLED: z.string().min(1).optional(),
   CREDENTIALS_ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, "must be 32 bytes as 64 hex characters")
