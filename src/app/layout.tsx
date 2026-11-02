@@ -19,11 +19,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Email Tracker",
+  title: "Loopify",
   description: "Know what needs your reply today. An AI assistant for your inbox and outreach.",
-  applicationName: "AI Email Tracker",
+  applicationName: "Loopify",
   icons: { apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Email Tracker", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Loopify", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

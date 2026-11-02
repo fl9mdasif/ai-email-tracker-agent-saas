@@ -7,8 +7,8 @@ async function main() {
   const { modules } = await import("../src/core/db/schema");
   await getDb()
     .insert(modules)
-    .values({ key: "email-tracker", name: "AI Email Tracker" })
-    .onConflictDoNothing();
+    .values({ key: "email-tracker", name: "Loopify" })
+    .onConflictDoUpdate({ target: modules.key, set: { name: "Loopify" } });
   console.log("db-seed: module catalog ready");
 }
 

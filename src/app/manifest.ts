@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI Email Tracker",
-    short_name: "Email Tracker",
+    name: "Loopify",
+    short_name: "Loopify",
     description: "Know what needs your reply today.",
     start_url: "/dashboard",
     scope: "/",

@@ -45,7 +45,7 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
         </h1>
 
         <p className="hero-anim hero-anim-d4 mt-8 max-w-xl text-lg leading-relaxed text-white/70">
-          AI Email Tracker reads your inboxes and outreach tools, tells you who to answer and follow
+          Loopify reads your inboxes and outreach tools, tells you who to answer and follow
           up with, and drafts the reply. You review it and click Send. Nothing goes out without you.
         </p>
         <p className="hero-anim hero-anim-d5 mt-3 max-w-xl text-base leading-relaxed text-white/50">

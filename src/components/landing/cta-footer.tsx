@@ -44,7 +44,7 @@ export function CtaFooter() {
             <span className="grid size-6 place-items-center rounded-md bg-primary text-primary-foreground">
               <Mail className="size-3.5" />
             </span>
-            AI Email Tracker
+            Loopify
           </p>
           <nav aria-label="Footer" className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {FOOTER_LINKS.map((link) => (
@@ -53,7 +53,7 @@ export function CtaFooter() {
               </a>
             ))}
           </nav>
-          <p>&copy; AI Email Tracker. All rights reserved.</p>
+          <p>&copy; Loopify. All rights reserved.</p>
         </div>
       </footer>
     </>

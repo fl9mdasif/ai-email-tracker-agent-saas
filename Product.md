@@ -1,4 +1,4 @@
-# AI Email Tracker Agent
+# Loopify
 
 A multi-tenant SaaS that connects to a business owner's email accounts and outreach tools, then uses an LLM to tell them what came in today, what needs a reply, and who needs a follow-up.
 

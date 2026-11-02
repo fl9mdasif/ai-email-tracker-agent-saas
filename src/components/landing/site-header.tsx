@@ -18,7 +18,7 @@ export function SiteHeader() {
           <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
             <Mail className="size-4" />
           </span>
-          AI Email Tracker
+          Loopify
         </Link>
         <nav aria-label="Sections" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
           {LINKS.map((link) => (
