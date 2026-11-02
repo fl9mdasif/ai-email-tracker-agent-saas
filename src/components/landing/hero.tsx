@@ -15,9 +15,9 @@ const INTEGRATIONS = PROVIDERS.map((provider) => provider.name);
 /** Full-bleed dark hero. The 3D (or static) visual sits behind the text on the right. */
 export function Hero({ visual }: { visual: React.ReactNode }) {
   return (
-    // Exactly one screen: the 3.5rem is the sticky header, so header + hero fill 100svh and
-    // nothing from the next section peeks in. Spacing and type scale with the screen height.
-    <section className="relative isolate flex h-[calc(100svh-3.5rem)] min-h-[600px] flex-col overflow-hidden bg-ink text-white">
+    // Exactly one screen. The navbar floats over the top of the hero (it is fixed and 3.5rem tall),
+    // so the content below starts under it. Spacing and type scale with the screen height.
+    <section className="relative isolate flex h-svh min-h-[640px] flex-col overflow-hidden bg-ink text-white">
       {/* visual layer */}
       <div aria-hidden className="absolute inset-0 -z-10">
         <div className="absolute inset-y-0 right-0 w-full opacity-50 md:w-[66%] md:opacity-100">
@@ -30,7 +30,7 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
         <div className="pointer-events-none absolute -right-32 bottom-0 size-[480px] rounded-full bg-brand-teal/15 blur-[120px]" />
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col justify-center px-4 pt-[2vh] pb-[1vh]">
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col justify-center px-4 pt-[calc(3.5rem+1vh)] pb-[1vh]">
         <p className="hero-anim hero-anim-d1 inline-flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 font-mono text-[11px] tracking-[0.18em] text-white/80 uppercase backdrop-blur-md">
           <span className="animate-pulse-dot size-2 rounded-full bg-brand-teal" />
           AI inbox assistant
@@ -73,16 +73,16 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
           </a>
         </div>
 
-        {/* The numbers sit in the hero text block. The fill is transparent, with a thin outline,
-            so the scene behind shows through. The label comes first in the markup (dt before dd)
-            and is flipped below the number visually. */}
+        {/* The numbers sit in the hero text block as plain solid text with no background of their
+            own. The label comes first in the markup (dt before dd) and is flipped below the number
+            visually. */}
         <dl className="hero-anim hero-anim-d5 mt-[clamp(1rem,4.5vh,2.75rem)] grid max-w-2xl grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
           {STATS.map((stat) => (
             <div key={stat.label} className="flex flex-col-reverse gap-0.5">
               <dt className="font-mono text-[10px] tracking-[0.14em] text-white/55 uppercase md:text-[11px]">
                 {stat.label}
               </dt>
-              <dd className="font-display text-3xl font-bold tracking-tight text-transparent [-webkit-text-stroke:1.2px_rgba(255,255,255,0.75)] md:text-4xl">
+              <dd className="font-display text-3xl font-bold tracking-tight text-white md:text-4xl">
                 {stat.value}
               </dd>
             </div>

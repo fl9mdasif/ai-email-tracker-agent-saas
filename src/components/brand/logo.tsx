@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
  * envelope uses the brand blue and a lighter blue in dark mode. Decorative: pair it with the
  * wordmark or give the surrounding link an accessible name.
  */
-export function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className, onDark = false }: { className?: string; onDark?: boolean }) {
   return (
     <svg
       viewBox="34 51 600 600"
-      className={cn("text-foreground", className)}
+      className={cn(onDark ? "text-white" : "text-foreground", className)}
       aria-hidden
       focusable="false"
     >
@@ -27,7 +27,7 @@ export function LogoMark({ className }: { className?: string }) {
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="stroke-brand dark:stroke-brand-light"
+        className={onDark ? "stroke-brand-light" : "stroke-brand dark:stroke-brand-light"}
       >
         <g strokeWidth="18">
           <path d="M190 352 V524 Q190 536 202 536 H468 Q480 536 480 524 V352" />
@@ -46,13 +46,31 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-/** Mark plus the "Loopify" wordmark. Letters follow the theme; "oo" stays brand blue. */
-export function Logo({ className, markClassName }: { className?: string; markClassName?: string }) {
+/**
+ * Mark plus the "Loopify" wordmark. Letters follow the theme; "oo" stays brand blue.
+ * `onDark` forces the light version, for use over a dark background such as the hero.
+ */
+export function Logo({
+  className,
+  markClassName,
+  onDark = false,
+}: {
+  className?: string;
+  markClassName?: string;
+  onDark?: boolean;
+}) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <LogoMark className={cn("size-9 shrink-0", markClassName)} />
-      <span className="font-display text-2xl leading-none font-extrabold tracking-tight text-foreground">
-        L<span className="text-brand dark:text-brand-light">oo</span>pify
+      <LogoMark onDark={onDark} className={cn("size-9 shrink-0", markClassName)} />
+      <span
+        className={cn(
+          "font-display text-2xl leading-none font-extrabold tracking-tight",
+          onDark ? "text-white" : "text-foreground",
+        )}
+      >
+        L
+        <span className={onDark ? "text-brand-light" : "text-brand dark:text-brand-light"}>oo</span>
+        pify
       </span>
     </span>
   );
