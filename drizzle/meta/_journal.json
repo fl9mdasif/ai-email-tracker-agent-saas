@@ -29,6 +29,13 @@
       "when": 1793617302577,
       "tag": "0003_loud_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793620969900,
+      "tag": "0004_lethal_barracuda",
+      "breakpoints": true
     }
   ]
 }

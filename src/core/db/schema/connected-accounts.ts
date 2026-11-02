@@ -17,6 +17,8 @@ export const connectedAccounts = pgTable(
     label: text("label").notNull(),
     /** Public identifier of the account, e.g. the mailbox address. */
     identity: text("identity").notNull(),
+    /** Non-secret key for showing the provider's branding, e.g. "hostinger". Null for older rows. */
+    brand: text("brand"),
     encryptedCredentials: text("encrypted_credentials").notNull(),
     status: text("status", { enum: ["connected", "error"] })
       .notNull()

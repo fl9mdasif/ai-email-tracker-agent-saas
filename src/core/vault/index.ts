@@ -20,6 +20,7 @@ const metaColumns = {
   authType: connectedAccounts.authType,
   label: connectedAccounts.label,
   identity: connectedAccounts.identity,
+  brand: connectedAccounts.brand,
   status: connectedAccounts.status,
   statusMessage: connectedAccounts.statusMessage,
   lastSyncedAt: connectedAccounts.lastSyncedAt,
@@ -33,6 +34,7 @@ export type AccountMeta = {
   authType: "oauth" | "api_key" | "app_password";
   label: string;
   identity: string;
+  brand: string | null;
   status: "connected" | "error";
   statusMessage: string | null;
   lastSyncedAt: Date | null;
@@ -45,6 +47,8 @@ export type SaveCredentialsInput = {
   authType: AccountMeta["authType"];
   label: string;
   identity: string;
+  /** Non-secret display key for the provider's branding. */
+  brand?: string | null;
   /** Any JSON-serializable secret, e.g. { password } or { apiKey }. */
   credentials: Record<string, unknown>;
 };
@@ -87,6 +91,7 @@ export async function saveCredentials(
         authType: input.authType,
         label: input.label,
         identity: input.identity,
+        brand: input.brand ?? null,
         encryptedCredentials,
       })
       .returning(metaColumns);
@@ -142,6 +147,19 @@ export async function getAccount(
     .where(and(eq(connectedAccounts.id, accountId), eq(connectedAccounts.tenantId, tenantId)))
     .limit(1);
   return row ?? null;
+}
+
+/** Sets the non-secret display brand of one of the tenant's accounts. */
+export async function setAccountBrand(
+  db: Database,
+  tenantId: string,
+  accountId: string,
+  brand: string | null,
+): Promise<void> {
+  await db
+    .update(connectedAccounts)
+    .set({ brand })
+    .where(and(eq(connectedAccounts.id, accountId), eq(connectedAccounts.tenantId, tenantId)));
 }
 
 /** Records a successful sync: sets the time and clears any earlier error. */
