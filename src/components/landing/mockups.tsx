@@ -49,9 +49,9 @@ export function ConnectMock() {
 
 const CHIP = {
   hot: "bg-red-500/15 text-red-700 dark:text-red-300",
-  reply: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  reply: "bg-brand/15 text-brand dark:text-brand-light",
   pay: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  fyi: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  fyi: "bg-brand-teal/15 text-brand-teal-text dark:text-brand-teal",
 } as const;
 
 const SORTED = [

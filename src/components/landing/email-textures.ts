@@ -31,7 +31,7 @@ function draw(
   const font = (size: number, weight = 600) => `${weight} ${size}px system-ui, "Segoe UI", sans-serif`;
 
   // card body
-  ctx.fillStyle = "rgba(18, 24, 54, 0.94)";
+  ctx.fillStyle = "rgba(16, 23, 61, 0.94)";
   ctx.strokeStyle = sorted ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)";
   ctx.lineWidth = 3;
   ctx.beginPath();

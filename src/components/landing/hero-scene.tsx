@@ -19,7 +19,8 @@ const RING_Z = -14;
 const LOOP_SECONDS = 15;
 const CARD_WIDTH = 3.2;
 const CARD_HEIGHT = 2;
-const BACKGROUND = "#0a0f23";
+/** Loopify ink (--lp-ink): the fog fades distant cards into the hero background. */
+const BACKGROUND = "#0a0f2c";
 
 /** Fly-in: each card appears in turn, 0.8 s, easing out like cubic-bezier(.16, 1, .3, 1). */
 const INTRO_DELAYS = [0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8];
@@ -187,12 +188,12 @@ function ScanRing() {
     <group position={[0, 0, RING_Z]}>
       <mesh ref={ring}>
         <torusGeometry args={[8.6, 0.05, 12, 160]} />
-        <meshBasicMaterial color="#a78bfa" toneMapped={false} />
+        <meshBasicMaterial color="#7b93ff" toneMapped={false} />
       </mesh>
       <mesh ref={halo}>
         <torusGeometry args={[8.6, 0.5, 12, 160]} />
         <meshBasicMaterial
-          color="#7c3aed"
+          color="#3452e1"
           transparent
           opacity={0.16}
           depthWrite={false}
@@ -218,11 +219,11 @@ function Orbit() {
         <group key={i} rotation={[0, 0, (i * Math.PI * 2) / 3]}>
           <mesh>
             <torusGeometry args={[9.5, 0.045, 8, 120, Math.PI * 0.55]} />
-            <meshBasicMaterial color="#c4b5fd" transparent opacity={0.85} toneMapped={false} />
+            <meshBasicMaterial color="#19d3c0" transparent opacity={0.85} toneMapped={false} />
           </mesh>
           <mesh position={[9.5, 0, 0]}>
             <sphereGeometry args={[0.16, 16, 16]} />
-            <meshBasicMaterial color="#f5f3ff" toneMapped={false} />
+            <meshBasicMaterial color="#f4f6fd" toneMapped={false} />
           </mesh>
         </group>
       ))}
@@ -265,7 +266,7 @@ function Dust() {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        color="#c4b5fd"
+        color="#9fb2ff"
         size={0.09}
         sizeAttenuation
         transparent

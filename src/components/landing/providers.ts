@@ -17,6 +17,6 @@ export type SampleMail = { from: string; subject: string; chip: string; chipColo
 export const SAMPLE_MAILS: readonly SampleMail[] = [
   { from: "Maria Gomez", subject: "Pricing for 20 seats?", chip: "HOT LEAD", chipColor: "#ef4444" },
   { from: "Accounts", subject: "Invoice #4821 due Friday", chip: "INVOICE", chipColor: "#f5a524" },
-  { from: "Rahim", subject: "Re: proposal draft", chip: "REPLY", chipColor: "#7c6cff" },
-  { from: "Weekly Digest", subject: "Ten tips for better sales", chip: "FYI", chipColor: "#38bdf8" },
+  { from: "Rahim", subject: "Re: proposal draft", chip: "REPLY", chipColor: "#7b93ff" },
+  { from: "Weekly Digest", subject: "Ten tips for better sales", chip: "FYI", chipColor: "#19d3c0" },
 ];

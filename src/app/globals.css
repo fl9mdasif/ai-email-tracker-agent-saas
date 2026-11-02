@@ -7,10 +7,24 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
+  --font-ui: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
-  --font-display: var(--font-space-grotesk);
+  --font-display: var(--font-sora);
+
+  /* Loopify brand palette as utilities: bg-brand, text-brand-teal, border-brand-line, ... */
+  --color-brand: var(--lp-blue);
+  --color-brand-light: var(--lp-blue-light);
+  --color-brand-indigo: var(--lp-indigo);
+  --color-brand-teal: var(--lp-teal);
+  --color-brand-teal-text: var(--lp-teal-text);
+  --color-ink: var(--lp-ink);
+  --color-brand-slate: var(--lp-slate);
+  --color-brand-muted: var(--lp-muted);
+  --color-brand-line: var(--lp-line);
+  --color-mist: var(--lp-mist);
+  --radius-card: var(--lp-radius);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,72 +64,89 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.5 0.2 275);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Loopify brand tokens (source of truth). */
+  --lp-blue: #3452e1;
+  --lp-indigo: #1f2b8f;
+  --lp-teal: #19d3c0;
+  --lp-teal-text: #0f766e; /* teal for text on light backgrounds; #19d3c0 is for fills and dark backgrounds */
+  --lp-ink: #0a0f2c;
+  --lp-slate: #4b5578;
+  --lp-muted: #8a93b5; /* not for body text on white (about 3:1) */
+  --lp-line: #e2e6f5;
+  --lp-mist: #f4f6fd;
+  --lp-white: #ffffff;
+  --lp-gradient: linear-gradient(135deg, #4a6cf7, #2b3fd0);
+  --lp-radius: 16px;
+  /* Derived for dark surfaces, where --lp-blue is too dark for text and links. */
+  --lp-blue-light: #7b93ff;
+
+  --background: var(--lp-white);
+  --foreground: var(--lp-ink);
+  --card: var(--lp-white);
+  --card-foreground: var(--lp-ink);
+  --popover: var(--lp-white);
+  --popover-foreground: var(--lp-ink);
+  --primary: var(--lp-blue);
+  --primary-foreground: var(--lp-white);
+  --secondary: var(--lp-mist);
+  --secondary-foreground: var(--lp-ink);
+  --muted: var(--lp-mist);
+  --muted-foreground: var(--lp-slate);
+  --accent: var(--lp-mist);
+  --accent-foreground: var(--lp-ink);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.5 0.2 275);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: var(--lp-line);
+  --input: var(--lp-line);
+  --ring: var(--lp-blue);
+  --chart-1: var(--lp-blue);
+  --chart-2: var(--lp-teal);
+  --chart-3: var(--lp-indigo);
+  --chart-4: var(--lp-muted);
+  --chart-5: var(--lp-slate);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.5 0.2 275);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: var(--lp-mist);
+  --sidebar-foreground: var(--lp-ink);
+  --sidebar-primary: var(--lp-blue);
+  --sidebar-primary-foreground: var(--lp-white);
+  --sidebar-accent: #e8ecfb;
+  --sidebar-accent-foreground: var(--lp-ink);
+  --sidebar-border: var(--lp-line);
+  --sidebar-ring: var(--lp-blue);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.7 0.16 275);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Dark surfaces are derived from --lp-ink; the brand file defines only the light palette. */
+  --background: var(--lp-ink);
+  --foreground: var(--lp-mist);
+  --card: #10173d;
+  --card-foreground: var(--lp-mist);
+  --popover: #10173d;
+  --popover-foreground: var(--lp-mist);
+  --primary: var(--lp-blue-light);
+  --primary-foreground: var(--lp-ink);
+  --secondary: #171f4a;
+  --secondary-foreground: var(--lp-mist);
+  --muted: #171f4a;
+  --muted-foreground: var(--lp-muted);
+  --accent: #1b2454;
+  --accent-foreground: var(--lp-mist);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.16 275);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.7 0.16 275);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: var(--lp-blue-light);
+  --chart-1: var(--lp-blue-light);
+  --chart-2: var(--lp-teal);
+  --chart-3: #4a6cf7;
+  --chart-4: var(--lp-muted);
+  --chart-5: var(--lp-slate);
+  --sidebar: #0d1336;
+  --sidebar-foreground: var(--lp-mist);
+  --sidebar-primary: var(--lp-blue-light);
+  --sidebar-primary-foreground: var(--lp-ink);
+  --sidebar-accent: #1b2454;
+  --sidebar-accent-foreground: var(--lp-mist);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: var(--lp-blue-light);
 }
 
 @layer base {
@@ -203,15 +234,15 @@
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, #c084fc, #a78bfa 45%, #60a5fa);
+  background: linear-gradient(90deg, var(--lp-blue-light), var(--lp-teal));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .btn-gradient {
-  background: linear-gradient(90deg, #7c3aed, #2563eb);
-  box-shadow: 0 10px 30px -12px rgba(124, 58, 237, 0.6);
+  background: var(--lp-gradient);
+  box-shadow: 0 10px 30px -12px rgba(52, 82, 225, 0.6);
 }
 
 .animate-marquee {

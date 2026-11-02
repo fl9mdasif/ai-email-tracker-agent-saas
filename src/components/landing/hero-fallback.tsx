@@ -28,19 +28,19 @@ export function HeroFallback() {
         viewBox="0 0 400 400"
         className="orbit-ring absolute top-1/2 left-1/2 -mt-[190px] -ml-[190px] size-[380px]"
       >
-        <circle cx="200" cy="200" r="180" fill="none" stroke="#a78bfa" strokeOpacity="0.18" strokeWidth="2" />
+        <circle cx="200" cy="200" r="180" fill="none" stroke="#7b93ff" strokeOpacity="0.18" strokeWidth="2" />
         <circle
           cx="200"
           cy="200"
           r="180"
           fill="none"
-          stroke="#c4b5fd"
+          stroke="#19d3c0"
           strokeOpacity="0.85"
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray="100 365"
         />
-        <circle cx="380" cy="200" r="6" fill="#f5f3ff" />
+        <circle cx="380" cy="200" r="6" fill="#f4f6fd" />
       </svg>
 
       <div className="absolute inset-0 [transform-style:preserve-3d]">
@@ -59,7 +59,7 @@ export function HeroFallback() {
           >
             <div className="card-fly" style={{ animationDelay: `${intro}s` }}>
               <div
-                className="card-float rounded-2xl border border-white/15 bg-[#121836]/90 p-4"
+                className="card-float rounded-2xl border border-white/15 bg-[#10173d]/90 p-4"
                 style={{
                   animationDuration: `${float}s`,
                   animationDelay: `${intro + FLY_IN_SECONDS}s`,
