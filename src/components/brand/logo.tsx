@@ -1,28 +1,46 @@
-import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Loopify mark: a white loop arrow around a teal envelope on a blue gradient tile.
- * Drawn on a 336 x 336 grid so it scales cleanly. Decorative; pair it with the wordmark
- * or give the surrounding link an accessible name.
+ * Loopify mark (icon only): a navy loop arrow around a blue open envelope with an @ letter.
+ * The ring and arrow follow the text colour, so they turn light on dark backgrounds; the
+ * envelope uses the brand blue and a lighter blue in dark mode. Decorative: pair it with the
+ * wordmark or give the surrounding link an accessible name.
  */
 export function LogoMark({ className }: { className?: string }) {
-  const gradientId = `loopify-gradient-${useId().replace(/:/g, "")}`;
-
   return (
-    <svg viewBox="0 0 336 336" className={className} aria-hidden focusable="false">
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#4a6cf7" />
-          <stop offset="1" stopColor="#2b3fd0" />
-        </linearGradient>
-      </defs>
-      <rect width="336" height="336" rx="76" fill={`url(#${gradientId})`} />
-      <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M237 126 A80 80 0 1 1 168 86" stroke="#fff" strokeWidth="26" />
-        <path d="M178 56 L212 86 L178 116" stroke="#fff" strokeWidth="24" />
-        <rect x="118" y="131" width="100" height="66" rx="14" stroke="#19d3c0" strokeWidth="13" />
-        <path d="M128 145 L168 174 L208 145" stroke="#19d3c0" strokeWidth="12" />
+    <svg
+      viewBox="34 51 600 600"
+      className={cn("text-foreground", className)}
+      aria-hidden
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor">
+        <path d="M334 148 A236 236 0 1 0 540 269" strokeWidth="40" />
+        <path
+          d="M350 82 L422 146 L350 210"
+          strokeWidth="38"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <g
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="stroke-brand dark:stroke-brand-light"
+      >
+        <g strokeWidth="18">
+          <path d="M190 352 V524 Q190 536 202 536 H468 Q480 536 480 524 V352" />
+          <path d="M188 356 L228 322 M482 356 L442 322" />
+          <path d="M190 356 L335 448 L480 356" />
+          <path d="M196 528 L290 424 M474 528 L380 424" />
+          <path d="M228 382 V277 Q228 266 239 266 H292 L335 251 L378 266 H431 Q442 266 442 277 V382" />
+        </g>
+        <g strokeWidth="12">
+          <circle cx="333" cy="350" r="21" />
+          <path d="M355 328 V362 C355 380 384 380 384 352 V345" />
+          <path d="M363 393 A52 52 0 1 1 384 345" />
+        </g>
       </g>
     </svg>
   );
@@ -31,9 +49,9 @@ export function LogoMark({ className }: { className?: string }) {
 /** Mark plus the "Loopify" wordmark. Letters follow the theme; "oo" stays brand blue. */
 export function Logo({ className, markClassName }: { className?: string; markClassName?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <LogoMark className={cn("size-8 shrink-0", markClassName)} />
-      <span className="font-display text-xl leading-none font-extrabold tracking-tight text-foreground">
+    <span className={cn("inline-flex items-center gap-2", className)}>
+      <LogoMark className={cn("size-9 shrink-0", markClassName)} />
+      <span className="font-display text-2xl leading-none font-extrabold tracking-tight text-foreground">
         L<span className="text-brand dark:text-brand-light">oo</span>pify
       </span>
     </span>

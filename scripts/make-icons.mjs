@@ -1,41 +1,44 @@
-// Renders the Loopify mark to the PNG sizes a PWA needs. Run: node scripts/make-icons.mjs
+// Renders the Loopify mark (icon only) to the PNG sizes a PWA needs. Run: node scripts/make-icons.mjs
 import sharp from "sharp";
 
-const gradient = `
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#4a6cf7"/>
-      <stop offset="1" stop-color="#2b3fd0"/>
-    </linearGradient>
-  </defs>`;
-
-// Ring, arrow and envelope on the 336 x 336 grid (same artwork as src/app/icon.svg).
-const glyph = `
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M237 126 A80 80 0 1 1 168 86" stroke="#fff" stroke-width="26"/>
-    <path d="M178 56 L212 86 L178 116" stroke="#fff" stroke-width="24"/>
-    <rect x="118" y="131" width="100" height="66" rx="14" stroke="#19d3c0" stroke-width="13"/>
-    <path d="M128 145 L168 174 L208 145" stroke="#19d3c0" stroke-width="12"/>
+// Same artwork as src/app/icon.svg, on its original grid (viewBox 34 51 600 600, centre 334 351).
+const mark = `
+  <g fill="none" stroke="#0a0f2c">
+    <path d="M334 148 A236 236 0 1 0 540 269" stroke-width="40"/>
+    <path d="M350 82 L422 146 L350 210" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g fill="none" stroke="#3452e1" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke-width="18">
+      <path d="M190 352 V524 Q190 536 202 536 H468 Q480 536 480 524 V352"/>
+      <path d="M188 356 L228 322 M482 356 L442 322"/>
+      <path d="M190 356 L335 448 L480 356"/>
+      <path d="M196 528 L290 424 M474 528 L380 424"/>
+      <path d="M228 382 V277 Q228 266 239 266 H292 L335 251 L378 266 H431 Q442 266 442 277 V382"/>
+    </g>
+    <g stroke-width="12">
+      <circle cx="333" cy="350" r="21"/>
+      <path d="M355 328 V362 C355 380 384 380 384 352 V345"/>
+      <path d="M363 393 A52 52 0 1 1 384 345"/>
+    </g>
   </g>`;
 
-/** rounded: tile with rounded corners (any-purpose icons). Otherwise a full-bleed square. */
-const svg = ({ rounded, scale }) => `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 336 336">
-  ${gradient}
-  <rect width="336" height="336" ${rounded ? 'rx="76"' : ""} fill="url(#g)"/>
-  <g transform="translate(168 168) scale(${scale}) translate(-168 -168)">${glyph}</g>
+/** White square with the mark centred and scaled. The icons need a solid background because
+ *  the navy ring would vanish on a dark launcher or splash screen. */
+const svg = (scale) => `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <rect width="600" height="600" fill="#ffffff"/>
+  <g transform="translate(300 300) scale(${scale}) translate(-334 -351)">${mark}</g>
 </svg>`;
 
 const targets = [
-  { file: "public/icons/icon-192.png", size: 192, rounded: true, scale: 1 },
-  { file: "public/icons/icon-512.png", size: 512, rounded: true, scale: 1 },
+  { file: "public/icons/icon-192.png", size: 192, scale: 0.9 },
+  { file: "public/icons/icon-512.png", size: 512, scale: 0.9 },
   // Maskable icons keep the artwork inside the central safe zone.
-  { file: "public/icons/icon-maskable-512.png", size: 512, rounded: false, scale: 0.72 },
-  // iOS rounds the corners itself, so the touch icon is a full-bleed square.
-  { file: "public/icons/apple-touch-icon.png", size: 180, rounded: false, scale: 0.92 },
+  { file: "public/icons/icon-maskable-512.png", size: 512, scale: 0.68 },
+  { file: "public/icons/apple-touch-icon.png", size: 180, scale: 0.86 },
 ];
 
-for (const { file, size, rounded, scale } of targets) {
-  await sharp(Buffer.from(svg({ rounded, scale }))).resize(size, size).png().toFile(file);
+for (const { file, size, scale } of targets) {
+  await sharp(Buffer.from(svg(scale))).resize(size, size).png().toFile(file);
   console.log("wrote", file);
 }
