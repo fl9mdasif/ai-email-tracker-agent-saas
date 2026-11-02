@@ -167,7 +167,7 @@ export default function HeroScene({ active }: { active: boolean }) {
 
   return (
     <Canvas
-      dpr={[1, 1.75]}
+      dpr={[1, 1.5]}
       camera={{ position: [0, 0, 9], fov: 42 }}
       frameloop={active ? "always" : "never"}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
