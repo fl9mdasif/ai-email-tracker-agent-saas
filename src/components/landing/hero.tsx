@@ -72,22 +72,25 @@ export function Hero({ visual }: { visual: React.ReactNode }) {
             See how it works
           </a>
         </div>
-      </div>
 
-      <div className="mx-auto w-full max-w-6xl shrink-0 px-4 pb-[2vh]">
-        <dl className="hero-anim hero-anim-d5 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-white/10 pt-[2vh] md:grid-cols-4">
+        {/* The numbers sit in the hero text block. The fill is transparent, with a thin outline,
+            so the scene behind shows through. The label comes first in the markup (dt before dd)
+            and is flipped below the number visually. */}
+        <dl className="hero-anim hero-anim-d5 mt-[clamp(1rem,4.5vh,2.75rem)] grid max-w-2xl grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
           {STATS.map((stat) => (
-            <div key={stat.label}>
-              <dd className="font-display text-2xl font-bold tracking-tight md:text-3xl">
-                {stat.value}
-              </dd>
-              <dt className="mt-0.5 font-mono text-[10px] tracking-[0.14em] text-white/55 uppercase md:text-[11px]">
+            <div key={stat.label} className="flex flex-col-reverse gap-0.5">
+              <dt className="font-mono text-[10px] tracking-[0.14em] text-white/55 uppercase md:text-[11px]">
                 {stat.label}
               </dt>
+              <dd className="font-display text-3xl font-bold tracking-tight text-transparent [-webkit-text-stroke:1.2px_rgba(255,255,255,0.75)] md:text-4xl">
+                {stat.value}
+              </dd>
             </div>
           ))}
         </dl>
+      </div>
 
+      <div className="mx-auto w-full max-w-6xl shrink-0 px-4 pb-[1.5vh]">
         <a
           href="#how"
           className="hero-anim hero-anim-d5 mt-4 inline-flex items-center gap-3 font-mono text-[11px] tracking-[0.18em] text-white/60 uppercase transition-colors hover:text-white [@media(max-height:820px)]:hidden"
