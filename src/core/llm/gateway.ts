@@ -121,6 +121,9 @@ export function createGateway(deps: GatewayDeps) {
   return { callModel };
 }
 
+/** The shape of callModel, so callers can accept a fake one in tests. */
+export type CallModelFn = ReturnType<typeof createGateway>["callModel"];
+
 let provider: LlmProvider | undefined;
 
 const defaultGateway = createGateway({
