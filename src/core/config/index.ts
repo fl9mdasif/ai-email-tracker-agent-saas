@@ -11,6 +11,8 @@ const envSchema = z.object({
     .regex(/^[0-9a-fA-F]{64}$/, "must be 32 bytes as 64 hex characters")
     .optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  /** The small, cheap model used for classification and summaries. Swappable without code changes. */
+  LLM_MODEL: z.string().min(1).default("gpt-4.1-mini"),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
