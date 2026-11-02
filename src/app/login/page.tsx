@@ -1,4 +1,5 @@
 import { signIn } from "@/core/auth";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   return (
@@ -8,13 +9,11 @@ export default function LoginPage() {
           "use server";
           await signIn("google", { redirectTo: "/dashboard" });
         }}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border p-8"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border bg-card p-8"
       >
         <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="text-sm opacity-70">Use your Google account to continue.</p>
-        <button type="submit" className="rounded-lg bg-foreground px-4 py-2 text-background">
-          Continue with Google
-        </button>
+        <p className="text-sm text-muted-foreground">Use your Google account to continue.</p>
+        <Button type="submit">Continue with Google</Button>
       </form>
     </main>
   );
