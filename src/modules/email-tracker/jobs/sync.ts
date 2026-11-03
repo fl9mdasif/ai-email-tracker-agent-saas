@@ -15,6 +15,8 @@ export const syncAccountJob = inngest.createFunction(
   async ({ event, step }) => {
     const { tenantId, accountId } = syncAccountEventSchema.parse(event.data);
     // syncAccount records failures itself and returns them, so a bad mailbox never fails the job.
+    // Fetching mail costs nothing, so it is not tied to the AI scan: that has its own schedule
+    // (scheduledAnalyzeJob), set by a super admin, so new mail never triggers a model call by itself.
     return step.run("sync-account", () => syncAccount(getDb(), tenantId, accountId));
   },
 );
@@ -38,4 +40,4 @@ export const scheduledSyncJob = inngest.createFunction(
   },
 );
 
-export const emailTrackerJobs = [syncAccountJob, scheduledSyncJob];
+export const syncJobs = [syncAccountJob, scheduledSyncJob];

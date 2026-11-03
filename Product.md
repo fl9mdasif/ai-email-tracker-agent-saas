@@ -52,6 +52,7 @@ The product will later be sold to other clients, so build it as multi-tenant fro
 - connected\_accounts (tenant\_id, provider, encrypted\_credentials, status, last\_synced\_at)
 - emails (normalized shape above, unique on account\_id plus provider message id)
 - email\_analysis (email\_id, category, priority, needs\_reply, summary, suggested\_action, model, created\_at)
+- platform\_settings (core, one row: ai\_scan\_interval\_minutes, updated\_by, updated\_at) and et\_scan\_state (tenant\_id, paused, last\_scan\_started\_at); tenants also has a `timezone` column
 - followups (tenant\_id, email\_id or thread\_id, due\_at, reason, status)
 - leads (tenant\_id, source, name, email, status, last\_activity\_at) for Instantly and Apollo data
 - sync\_runs (account\_id, started\_at, finished\_at, status, error)
@@ -60,6 +61,10 @@ The product will later be sold to other clients, so build it as multi-tenant fro
 
 - Classify each new email into: needs\_reply, follow\_up\_needed, lead\_reply, invoice\_or\_payment, newsletter\_or\_promo, fyi\_only, spam.
 - Give each email a priority from 1 to 3, a one-sentence summary, and a suggested next action.
+- **Scan only today's mail.** The AI never scans the whole mailbox, to keep credit use low. "Today" means mail received since local midnight in the tenant's own time zone (`tenants.timezone`, default `Asia/Dhaka`, editable in Settings). Older mail is listed but not analysed.
+- **Scan interval is set by a super admin, not by tenants.** The platform dashboard (`/admin`, super admins only) has one dropdown: 15 minutes, 30 minutes, or 1 to 10 hours (default 1 hour). It controls only the AI scan; mail is still fetched every 15 minutes because fetching costs nothing. Super admins are the emails in `SUPER_ADMIN_EMAILS`; everyone else gets a 404 on `/admin`. This single page is a deliberate exception to "no admin panels yet".
+- **The user can stop a scan.** On Today, a progress bar ("Scanning your mail" with the date being scanned) has a Cancel button beside it. Cancel stops the scan after the email in flight and turns automatic scans off for that tenant until the user presses Scan now. Cancelling never uses up an email's retry attempts.
+- **Provider switch.** `LLM_PROVIDER=openai` (production) or `groq` (free tier, for testing) selects the model provider with no code change. Only the LLM gateway talks to a provider.
 - Use structured JSON output validated with Zod. If validation fails, retry once, then mark the email as unanalyzed.
 - Daily digest: group by priority, list who needs a reply, list overdue follow-ups, list leads that replied.
 - Chat: the user asks a question, the app retrieves relevant rows from the database with plain SQL filters first, and only then sends the small result set to the LLM. Never send the whole mailbox to the model.
@@ -136,6 +141,15 @@ Automatic or scheduled sending without a user click, bulk sending, billing and s
 
 The client can sign in, connect his accounts, see today's emails grouped by priority, see who needs a follow-up, ask the chat what to do today, and install the app on his phone.
 
+## Planned for version two (not part of version one)
+
+Nothing here is built or scheduled. Version one is finished at the definition of done above.
+
+1. **Several accounts per provider.** A tenant can connect more than one mailbox on the same provider (for example four or five Gmail accounts). The data model and the Accounts page already allow it, but version two makes it a stated, tested feature: independent sync per account, a Google/Microsoft account picker on every "Connect", a label and a filter by account on Today, accounts grouped by provider, and a per-tenant account cap tied to per-module billing.
+2. **Super admin as a database role** instead of the `SUPER_ADMIN_EMAILS` list.
+3. **Hostinger Agentic Mail API and webhooks** as an alternative to IMAP (needs a public HTTPS address, so only after the first deploy).
+4. **Google app verification** so Gmail tokens do not expire every 7 days in testing mode.
+
 ## First task for Cursor
 
 Read this whole README, including the Platform-ready rules. Where the Folder structure section and the Platform-ready rules disagree, the Platform-ready rules win: shared code goes in \`src/core\`, email tracker code goes in \`src/modules/email-tracker\`. Then reply with a short implementation plan for milestone 1 and a list of any questions. Do not write code until I approve the plan.
@@ -157,8 +171,15 @@ DATABASE_URL=
 # Encryption (32-byte hex string)
 CREDENTIALS_ENCRYPTION_KEY=
 
-# OpenAI
+# Language model: openai (production) or groq (free tier, testing)
+LLM_PROVIDER=openai
 OPENAI_API_KEY=
+GROQ_API_KEY=
+# Optional model override; blank = the provider's default
+LLM_MODEL=
+
+# Platform dashboard: comma-separated emails of super admins
+SUPER_ADMIN_EMAILS=
 
 # Google OAuth (Gmail connector)
 GOOGLE_CLIENT_ID=

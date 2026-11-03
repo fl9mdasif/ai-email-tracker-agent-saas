@@ -3,6 +3,8 @@ import { boolean, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** IANA time zone; decides where "today" starts for this tenant's AI scan. */
+  timezone: text("timezone").notNull().default("Asia/Dhaka"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

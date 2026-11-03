@@ -1,6 +1,11 @@
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { SYNC_ACCOUNT_EVENT, syncAccountEventSchema } from "./events";
+import {
+  ANALYZE_TENANT_EVENT,
+  SYNC_ACCOUNT_EVENT,
+  analyzeTenantEventSchema,
+  syncAccountEventSchema,
+} from "./events";
 
 describe("sync event", () => {
   const ids = {
@@ -21,6 +26,27 @@ describe("sync event", () => {
     expect(syncAccountEventSchema.safeParse({ ...ids, accountId: "not-a-uuid" }).success).toBe(false);
     expect(syncAccountEventSchema.safeParse({}).success).toBe(false);
   });
+});
+
+describe("analyze event and job list", () => {
+  it("accepts a tenant id only", () => {
+    expect(ANALYZE_TENANT_EVENT).toBe("email-tracker/tenant.analyze");
+    const tenantId = "3f8c2c0e-7a5b-4d58-9f0e-2b6f1f3b7a11";
+    expect(analyzeTenantEventSchema.parse({ tenantId })).toEqual({ tenantId });
+    expect(analyzeTenantEventSchema.safeParse({}).success).toBe(false);
+    expect(analyzeTenantEventSchema.safeParse({ tenantId: "nope" }).success).toBe(false);
+  });
+
+  it("registers the sync jobs and the analysis job", async () => {
+    const { emailTrackerJobs } = await import("./index");
+    const ids = emailTrackerJobs.map((job) => (job as unknown as { id: () => string }).id());
+    expect(ids).toEqual([
+      "email-tracker-sync-account",
+      "email-tracker-scheduled-sync",
+      "email-tracker-analyze-tenant",
+      "email-tracker-scheduled-analyze",
+    ]);
+  }, 30_000); // the first import loads the Inngest client and the database layer
 });
 
 // Runs against the real Neon database (env comes from vitest.config.mts); skipped when it is not configured.

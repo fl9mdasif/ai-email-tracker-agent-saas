@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** An env line left blank (`NAME=`) counts as not set. */
+function blankToUndefined(value: unknown): unknown {
+  return typeof value === "string" && value.trim() === "" ? undefined : value;
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   NEXTAUTH_URL: z.url().optional(),
@@ -11,8 +16,14 @@ const envSchema = z.object({
     .regex(/^[0-9a-fA-F]{64}$/, "must be 32 bytes as 64 hex characters")
     .optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
-  /** The small, cheap model used for classification and summaries. Swappable without code changes. */
-  LLM_MODEL: z.string().min(1).default("gpt-4.1-mini"),
+  /** Free-tier provider for testing. Only used when LLM_PROVIDER=groq. */
+  GROQ_API_KEY: z.string().min(1).optional(),
+  /** Which language-model provider the gateway calls. Switch to openai for production. */
+  LLM_PROVIDER: z.preprocess(blankToUndefined, z.enum(["openai", "groq"]).default("openai")),
+  /** Optional model override. Empty means the default for the chosen provider (see defaultModelFor). */
+  LLM_MODEL: z.preprocess(blankToUndefined, z.string().min(1).optional()),
+  /** Comma-separated emails allowed to open the platform dashboard (/admin). Empty means nobody. */
+  SUPER_ADMIN_EMAILS: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
@@ -25,6 +36,17 @@ const envSchema = z.object({
 
 export type AppConfig = z.infer<typeof envSchema>;
 export type ConfigKey = keyof AppConfig;
+export type LlmProviderName = AppConfig["LLM_PROVIDER"];
+
+const DEFAULT_MODELS: Record<LlmProviderName, string> = {
+  openai: "gpt-4.1-mini",
+  groq: "openai/gpt-oss-20b",
+};
+
+/** The small, cheap model used for classification and summaries on each provider. */
+export function defaultModelFor(provider: LlmProviderName): string {
+  return DEFAULT_MODELS[provider];
+}
 
 let cached: AppConfig | undefined;
 

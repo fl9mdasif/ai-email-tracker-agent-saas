@@ -170,6 +170,7 @@ describe("analyzeEmail", () => {
     })) as unknown as CallModelFn;
     expect(await analyzeEmail(email, ctx, { callModel })).toEqual({
       ok: false,
+      reason: "invalid_output",
       message: "The AI reply could not be validated.",
     });
   });

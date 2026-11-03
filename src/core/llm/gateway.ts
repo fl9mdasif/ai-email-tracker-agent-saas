@@ -1,9 +1,9 @@
 import type { z } from "zod";
-import { getConfig, requireConfig } from "@/core/config";
+import { defaultModelFor, getConfig, requireConfig } from "@/core/config";
 import { type Database, getDb } from "@/core/db";
 import { llmUsage } from "@/core/db/schema";
 import { createOpenAiProvider } from "./openai-provider";
-import type { LlmProvider } from "./types";
+import { LlmProviderError, type LlmProvider } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 /** The first try plus one retry. */
@@ -25,9 +25,20 @@ export type CallModelInput<T> = {
   timeoutMs?: number;
 };
 
+/**
+ * Why a call failed. The first three will not fix themselves, so callers should pause instead of
+ * retrying: no key set, no credits left, key rejected.
+ */
+export type ModelFailureReason =
+  | "not_configured"
+  | "quota_exhausted"
+  | "auth_failed"
+  | "invalid_output"
+  | "provider_error";
+
 export type CallModelResult<T> =
   | { ok: true; data: T; model: string }
-  | { ok: false; reason: "not_configured" | "invalid_output" | "provider_error"; message: string };
+  | { ok: false; reason: ModelFailureReason; message: string };
 
 export type GatewayDeps = {
   getProvider: () => LlmProvider;
@@ -35,7 +46,10 @@ export type GatewayDeps = {
   defaultModel: () => string;
 };
 
-type UsageStatus = "ok" | "invalid_output" | "error";
+type UsageStatus = "ok" | "invalid_output" | "error" | "quota_exhausted" | "auth_failed";
+
+const QUOTA_MESSAGE = "The AI service has no credits left. Add credits to the AI provider account and analysis will resume.";
+const AUTH_MESSAGE = "The AI service rejected the API key. Check the API key for the selected LLM_PROVIDER.";
 
 function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
   try {
@@ -102,9 +116,19 @@ export function createGateway(deps: GatewayDeps) {
         }
         failure = "invalid_output";
         await recordUsage(input.tenantId, input.usageTag, response.model, "invalid_output", latency, response.inputTokens, response.outputTokens);
-      } catch {
+      } catch (error) {
+        const latency = Date.now() - startedAt;
+        // No credits or a rejected key will not fix themselves, so stop at once (no retry).
+        if (error instanceof LlmProviderError && error.kind === "quota") {
+          await recordUsage(input.tenantId, input.usageTag, model, "quota_exhausted", latency);
+          return { ok: false, reason: "quota_exhausted", message: QUOTA_MESSAGE };
+        }
+        if (error instanceof LlmProviderError && error.kind === "auth") {
+          await recordUsage(input.tenantId, input.usageTag, model, "auth_failed", latency);
+          return { ok: false, reason: "auth_failed", message: AUTH_MESSAGE };
+        }
         failure = "provider_error";
-        await recordUsage(input.tenantId, input.usageTag, model, "error", Date.now() - startedAt);
+        await recordUsage(input.tenantId, input.usageTag, model, "error", latency);
       }
     }
 
@@ -126,13 +150,26 @@ export type CallModelFn = ReturnType<typeof createGateway>["callModel"];
 
 let provider: LlmProvider | undefined;
 
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+
+/** Builds the provider named by LLM_PROVIDER. Throws if its key is missing. */
+function buildProvider(): LlmProvider {
+  if (getConfig().LLM_PROVIDER === "groq") {
+    return createOpenAiProvider(requireConfig("GROQ_API_KEY"), { baseURL: GROQ_BASE_URL, strictSchema: false });
+  }
+  return createOpenAiProvider(requireConfig("OPENAI_API_KEY"));
+}
+
 const defaultGateway = createGateway({
   getProvider: () => {
-    provider ??= createOpenAiProvider(requireConfig("OPENAI_API_KEY"));
+    provider ??= buildProvider();
     return provider;
   },
   getDb,
-  defaultModel: () => getConfig().LLM_MODEL,
+  defaultModel: () => {
+    const config = getConfig();
+    return config.LLM_MODEL ?? defaultModelFor(config.LLM_PROVIDER);
+  },
 });
 
 export const callModel = defaultGateway.callModel;

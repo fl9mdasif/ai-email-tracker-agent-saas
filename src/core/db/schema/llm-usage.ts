@@ -17,7 +17,9 @@ export const llmUsage = pgTable(
     model: text("model").notNull(),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
-    status: text("status", { enum: ["ok", "invalid_output", "error"] }).notNull(),
+    status: text("status", {
+      enum: ["ok", "invalid_output", "error", "quota_exhausted", "auth_failed"],
+    }).notNull(),
     latencyMs: integer("latency_ms").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

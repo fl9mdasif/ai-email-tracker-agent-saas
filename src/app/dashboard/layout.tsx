@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
+import { getSuperAdminEmail } from "@/core/auth/super-admin";
 import { requireModule } from "@/core/modules/guard";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -20,12 +21,20 @@ async function ModuleGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** The shell needs to know up front whether to show the super-admin link. */
+async function ShellWithAdminLink({ children }: { children: React.ReactNode }) {
+  const isSuperAdmin = (await getSuperAdminEmail()) !== null;
+  return <AppShell showAdmin={isSuperAdmin}>{children}</AppShell>;
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell>
-      <Suspense fallback={<PageSkeleton />}>
-        <ModuleGate>{children}</ModuleGate>
-      </Suspense>
-    </AppShell>
+    <Suspense fallback={<AppShell>{<PageSkeleton />}</AppShell>}>
+      <ShellWithAdminLink>
+        <Suspense fallback={<PageSkeleton />}>
+          <ModuleGate>{children}</ModuleGate>
+        </Suspense>
+      </ShellWithAdminLink>
+    </Suspense>
   );
 }

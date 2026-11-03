@@ -16,6 +16,18 @@ export type LlmResponse = {
   outputTokens: number;
 };
 
+/**
+ * A provider failure the gateway can act on. "auth" (key rejected) and "quota" (no credits) will
+ * not fix themselves on a retry, so the gateway stops at once and callers pause instead of
+ * counting a failed attempt against the email.
+ */
+export class LlmProviderError extends Error {
+  constructor(readonly kind: "auth" | "quota" | "other") {
+    super(`LLM provider error: ${kind}`); // never carries the vendor's message
+    this.name = "LlmProviderError";
+  }
+}
+
 /** One model vendor. Swap the implementation to change vendor; nothing else changes. */
 export interface LlmProvider {
   complete(request: LlmRequest): Promise<LlmResponse>;

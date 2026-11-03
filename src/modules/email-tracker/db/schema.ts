@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -83,6 +84,65 @@ export const etSyncState = pgTable("et_sync_state", {
   /** IMAP UIDVALIDITY as text (it can exceed a 32-bit integer). */
   uidValidity: text("uid_validity").notNull(),
   lastUid: integer("last_uid").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * What the AI made of one email. A row exists for every email the analyzer has tried:
+ * "analyzed" carries the result, "failed" carries a safe message and the number of attempts,
+ * and mail that keeps failing stays unanalyzed instead of being retried forever.
+ */
+export const etEmailAnalysis = pgTable(
+  "et_email_analysis",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    emailId: uuid("email_id")
+      .notNull()
+      .references(() => etEmails.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["analyzed", "failed"] }).notNull(),
+    category: text("category", {
+      enum: [
+        "needs_reply",
+        "follow_up_needed",
+        "lead_reply",
+        "invoice_or_payment",
+        "newsletter_or_promo",
+        "fyi_only",
+        "spam",
+      ],
+    }),
+    /** 1 = needs attention today, 2 = handle soon, 3 = can wait. */
+    priority: integer("priority"),
+    needsReply: boolean("needs_reply"),
+    summary: text("summary"),
+    suggestedAction: text("suggested_action"),
+    model: text("model"),
+    attempts: integer("attempts").notNull().default(0),
+    /** A safe message, never model output or email text. */
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("et_email_analysis_email_uq").on(table.emailId),
+    index("et_email_analysis_tenant_status_idx").on(table.tenantId, table.status),
+    index("et_email_analysis_tenant_priority_idx").on(table.tenantId, table.priority),
+  ],
+);
+
+/**
+ * Where a tenant's AI scan stands. `paused` is set when the user presses Cancel: the running
+ * scan stops and no automatic scan starts until the user presses "Scan now".
+ */
+export const etScanState = pgTable("et_scan_state", {
+  tenantId: uuid("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  paused: boolean("paused").notNull().default(false),
+  lastScanStartedAt: timestamp("last_scan_started_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -51,7 +51,8 @@ describe.skipIf(!configured)("email queries (Neon)", () => {
       subject: `Query test ${n}`,
       snippet: "snippet",
       bodyText: "a long body that previews must not include",
-      receivedAt: new Date(`2026-10-0${n}T08:00:00Z`),
+      // Mail 3 is the newest. All of it arrives today, the only mail the AI scans.
+      receivedAt: new Date(Date.now() - (4 - n) * 1000),
       direction: "inbound" as const,
       status: "unread" as const,
       labels: [],
@@ -90,6 +91,63 @@ describe.skipIf(!configured)("email queries (Neon)", () => {
     const counts = await queries.countEmailsByAccount(db, tenantA);
     expect(counts.get(accountA)).toBe(3);
     expect((await queries.countEmailsByAccount(db, tenantB)).size).toBe(0);
+  }, 60_000);
+
+  it("shows the AI analysis on the email it belongs to, and null for the rest", async () => {
+    const analysisQueries = await import("./analysis");
+    const et = await import("../db/schema");
+    const before = await analysisQueries.getAnalysisSummary(db, tenantA);
+    expect(before).toEqual({ analyzed: 0, waiting: 3, gaveUp: 0, problem: null });
+
+    const [newest] = await queries.listLatestEmails(db, tenantA, 1);
+    await db.insert(et.etEmailAnalysis).values({
+      tenantId: tenantA,
+      emailId: newest.id,
+      status: "analyzed",
+      category: "lead_reply",
+      priority: 1,
+      needsReply: true,
+      summary: "A lead asks for the price.",
+      suggestedAction: "Reply with the price list.",
+      model: "test-model",
+      attempts: 1,
+    });
+
+    const emails = await queries.listLatestEmails(db, tenantA, 20);
+    expect(emails[0].analysis).toEqual({
+      category: "lead_reply",
+      priority: 1,
+      needsReply: true,
+      summary: "A lead asks for the price.",
+      suggestedAction: "Reply with the price list.",
+    });
+    expect(emails[1].analysis).toBeNull();
+    expect(await analysisQueries.getAnalysisSummary(db, tenantA)).toEqual({
+      analyzed: 1,
+      waiting: 2,
+      gaveUp: 0,
+      problem: null,
+    });
+    expect(await analysisQueries.getAnalysisSummary(db, tenantB)).toEqual({
+      analyzed: 0,
+      waiting: 0,
+      gaveUp: 0,
+      problem: null,
+    });
+  }, 60_000);
+
+  it("reports a paused AI service from the latest usage record", async () => {
+    const analysisQueries = await import("./analysis");
+    await db.insert(core.llmUsage).values({
+      tenantId: tenantA,
+      usageTag: "email-analysis",
+      model: "test-model",
+      status: "quota_exhausted",
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+    expect((await analysisQueries.getAnalysisSummary(db, tenantA)).problem).toBe("quota_exhausted");
+    expect((await analysisQueries.getAnalysisSummary(db, tenantB)).problem).toBeNull();
   }, 60_000);
 
   it("lists the tenant's own sync runs", async () => {
