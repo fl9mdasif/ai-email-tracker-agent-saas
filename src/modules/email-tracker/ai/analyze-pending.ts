@@ -3,6 +3,7 @@ import type { Database } from "@/core/db";
 import { connectedAccounts } from "@/core/db/schema";
 import type { ModelFailureReason } from "@/core/llm/gateway";
 import { etEmailAnalysis, etEmails } from "../db/schema";
+import { recordAiFollowUp } from "../queries/mutations";
 import { getTodayWindow, isScanPaused } from "../scan/scan-state";
 import { type AnalyzeEmailResult, analyzeEmail } from "./analyze-email";
 import type { PromptEmail } from "./prompts";
@@ -120,6 +121,10 @@ export async function analyzePendingEmails(
         model: result.model,
         error: null,
       });
+      // A mail the AI says needs a follow-up also shows up on the Follow-ups page.
+      if (result.analysis.category === "follow_up_needed") {
+        await recordAiFollowUp(db, tenantId, row.id, result.analysis.suggested_action);
+      }
       outcome.analyzed += 1;
     } else {
       await storeResult(db, tenantId, row.id, {

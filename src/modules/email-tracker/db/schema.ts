@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -147,5 +148,51 @@ export const etScanState = pgTable("et_scan_state", {
   lastScanStartedAt: timestamp("last_scan_started_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** The user's own state for one email. A row means "handled"; deleting it undoes that. */
+export const etEmailState = pgTable(
+  "et_email_state",
+  {
+    emailId: uuid("email_id")
+      .primaryKey()
+      .references(() => etEmails.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    handledAt: timestamp("handled_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("et_email_state_tenant_idx").on(table.tenantId)],
+);
+
+/**
+ * Things to follow up on: created by the AI (a mail it marked "follow-up needed") or by the user
+ * ("Remind me"). One AI follow-up per email; a user can add several reminders.
+ */
+export const etFollowups = pgTable(
+  "et_followups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    emailId: uuid("email_id")
+      .notNull()
+      .references(() => etEmails.id, { onDelete: "cascade" }),
+    threadId: text("thread_id").notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    reason: text("reason").notNull().default(""),
+    source: text("source", { enum: ["ai", "manual"] }).notNull(),
+    status: text("status", { enum: ["open", "done", "dismissed"] })
+      .notNull()
+      .default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("et_followups_tenant_status_due_idx").on(table.tenantId, table.status, table.dueAt),
+    // The AI never creates two follow-ups for the same email, however often analysis runs.
+    uniqueIndex("et_followups_ai_email_uq").on(table.emailId).where(sql`${table.source} = 'ai'`),
+  ],
+);
 
 export type NewEtEmail = typeof etEmails.$inferInsert;
