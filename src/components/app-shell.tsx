@@ -3,11 +3,13 @@
 import { CalendarClock, LayoutDashboard, Mail, Plug, Reply, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
+type Badges = Record<string, number>;
 
 const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Today", icon: LayoutDashboard },
@@ -30,10 +32,78 @@ function isActive(pathname: string, href: string): boolean {
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] leading-5 font-semibold text-white md:ml-auto">
+    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] leading-5 font-semibold text-white">
       {count > 99 ? "99+" : count}
     </span>
   );
+}
+
+type NavProps = { items: NavItem[]; badges: Badges };
+
+function SideNav({ items, badges, pathname }: NavProps & { pathname: string }) {
+  return (
+    <nav className="flex flex-col gap-1" aria-label="Main">
+      {items.map(({ href, label, icon: Icon }) => {
+        const active = isActive(pathname, href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+              active && "bg-sidebar-accent font-medium",
+            )}
+          >
+            <Icon className="size-4" />
+            {label}
+            <Badge count={badges[href] ?? 0} />
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function BottomNav({ items, badges, pathname }: NavProps & { pathname: string }) {
+  return (
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-background py-1.5 md:hidden">
+      {items.map(({ href, label, icon: Icon }) => {
+        const active = isActive(pathname, href);
+        const count = badges[href] ?? 0;
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-1 text-[10px] text-muted-foreground",
+              active && "text-primary",
+            )}
+          >
+            <span className="relative">
+              <Icon className="size-5" />
+              {count > 0 ? <span aria-label={`${count} waiting`} className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-brand" /> : null}
+            </span>
+            <span className="max-w-full truncate">{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/**
+ * The menus need the current page address to mark the active item. That is only known at request
+ * time, so just these two small parts wait for it, and the rest of the shell does not. Until it
+ * arrives the menu is drawn with nothing marked active.
+ */
+function LiveSideNav(props: NavProps) {
+  return <SideNav {...props} pathname={usePathname()} />;
+}
+
+function LiveBottomNav(props: NavProps) {
+  return <BottomNav {...props} pathname={usePathname()} />;
 }
 
 export function AppShell({
@@ -44,9 +114,8 @@ export function AppShell({
   children: React.ReactNode;
   showAdmin?: boolean;
   /** Small counts beside a menu item, by its address (for example the unhandled needs-reply mail). */
-  badges?: Record<string, number>;
+  badges?: Badges;
 }) {
-  const pathname = usePathname();
   const items = showAdmin ? [...BASE_NAV_ITEMS, ADMIN_NAV_ITEM] : BASE_NAV_ITEMS;
 
   return (
@@ -55,26 +124,9 @@ export function AppShell({
         <Link href="/dashboard" aria-label="Loopify dashboard" className="px-2">
           <Logo />
         </Link>
-        <nav className="flex flex-col gap-1" aria-label="Main">
-          {items.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
-                  active && "bg-sidebar-accent font-medium",
-                )}
-              >
-                <Icon className="size-4" />
-                {label}
-                <Badge count={badges[href] ?? 0} />
-              </Link>
-            );
-          })}
-        </nav>
+        <Suspense fallback={<SideNav items={items} badges={badges} pathname="" />}>
+          <LiveSideNav items={items} badges={badges} />
+        </Suspense>
         <div className="mt-auto">
           <ThemeToggle />
         </div>
@@ -90,32 +142,9 @@ export function AppShell({
         <div className="flex-1 p-4 md:p-8">{children}</div>
       </div>
 
-      <nav
-        aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-background py-1.5 md:hidden"
-      >
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
-          const count = badges[href] ?? 0;
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-1 text-[10px] text-muted-foreground",
-                active && "text-primary",
-              )}
-            >
-              <span className="relative">
-                <Icon className="size-5" />
-                {count > 0 ? <span aria-label={`${count} waiting`} className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-brand" /> : null}
-              </span>
-              <span className="max-w-full truncate">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <Suspense fallback={<BottomNav items={items} badges={badges} pathname="" />}>
+        <LiveBottomNav items={items} badges={badges} />
+      </Suspense>
     </div>
   );
 }

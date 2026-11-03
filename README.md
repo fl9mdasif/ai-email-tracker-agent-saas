@@ -14,7 +14,8 @@ The full product spec is in [Product.md](Product.md).
 | 3 | Mail sync over IMAP (Hostinger, Zoho) in the background | Done |
 | 7 (part) | Connect Gmail (read-only OAuth), several Gmail accounts | Code complete; needs Google Cloud setup and a real-Gmail test |
 | 4 | AI analysis: category, priority, summary, next action (today's mail only, super-admin scan interval) | Code complete; live run verified on Groq |
-| 5+ | Prioritised dashboard, Gmail/Outlook OAuth, follow-ups, outreach tools | Planned |
+| 5 | Tenant dashboard: Today by priority, Needs reply, Follow-ups, Mail, email detail, export and delete | Code complete; needs a look in the browser |
+| 5b+ | Super admin dashboard, chat, Outlook, drafts and Send, outreach tools | Planned |
 
 ## Tech stack
 
@@ -90,6 +91,13 @@ Rules that hold everywhere:
 | `npm run inngest:dev` | Local Inngest worker |
 | `npm run ai:smoke` | One real model call (provider from `LLM_PROVIDER`) to check the key, model and credits |
 | `npm run db:backfill-brand` | Set the provider brand on older connected accounts |
+
+## Dashboard
+
+- **Today**: numbers, today's mail by priority, a get-started checklist, and an alert when an account needs reconnecting.
+- **Needs reply**, **Follow-ups** (AI suggestions plus your own **Remind me**), and **Mail** (search, filters by account, category, priority, handled and unread).
+- Open any email to read it as plain text, see what the AI made of it, open it in Gmail, or press **Analyze this email** for mail older than today.
+- **Settings**: time zone, AI usage, **Export my data** (JSON) and **Delete my workspace**.
 
 ## AI analysis
 
