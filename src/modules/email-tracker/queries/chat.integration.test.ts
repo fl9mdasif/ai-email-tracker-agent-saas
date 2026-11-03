@@ -151,6 +151,13 @@ describe.skipIf(!configured)("chat retrieval (Neon)", () => {
     expect(subjects((await chat.retrieveForChat(db, tenantA, plan({ unreadOnly: true, period: "today" }))).rows)).toEqual(["Pricing question", "Handled one"]); // Invoice 77 is read
     expect(subjects((await chat.retrieveForChat(db, tenantA, plan({ accountEmail: acc2.toUpperCase() }))).rows)).toEqual(["Handled one", "Weekly news", "Ancient"]);
     expect(subjects((await chat.retrieveForChat(db, tenantA, plan({ priority: 1 }))).rows)).toEqual(["Pricing question", "Re: Pricing"]);
+
+    // Hot leads: only mail the AI scored hot.
+    const { eq } = await import("drizzle-orm");
+    await db.update(et.etEmailAnalysis).set({ leadTemperature: "hot", leadReason: "Asked for a price" }).where(eq(et.etEmailAnalysis.emailId, id.m1));
+    expect(subjects((await chat.retrieveForChat(db, tenantA, plan({ hotLeadsOnly: true }))).rows)).toEqual(["Pricing question"]);
+    expect((await chat.retrieveForChat(db, tenantB, plan({ hotLeadsOnly: true }))).rows).toEqual([]);
+    expect(chat.describePlan(plan({ hotLeadsOnly: true }), "all time")).toContain("from hot leads");
   }, 120_000);
 
   it("the 'needs action' question: waiting for a reply, not handled, most urgent first", async () => {

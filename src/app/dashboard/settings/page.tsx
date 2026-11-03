@@ -66,7 +66,8 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="font-display text-lg">Your data</CardTitle>
           <CardDescription>
-            Download a copy of your workspace: accounts (never passwords), mail, AI results, follow-ups and your chat, as one JSON file.
+            Download a copy of your workspace: accounts (never passwords), mail, AI results, follow-ups, leads, drafts, the log of emails you sent
+            and your chat, as one JSON file.
           </CardDescription>
         </CardHeader>
         <CardContent>

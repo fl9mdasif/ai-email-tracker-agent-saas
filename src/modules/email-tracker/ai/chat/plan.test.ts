@@ -82,8 +82,8 @@ describe("resolvePeriod in the tenant's own time zone", () => {
 });
 
 describe("presets", () => {
-  it("are the four chips, each with its own id and a plan that never asks for more than the cap", () => {
-    expect(CHAT_PRESETS.map((preset) => preset.id)).toEqual(["needs-action", "follow-up", "leads", "today"]);
+  it("are the five chips, each with its own id and a plan that never asks for more than the cap", () => {
+    expect(CHAT_PRESETS.map((preset) => preset.id)).toEqual(["needs-action", "follow-up", "leads", "hot-leads", "today"]);
     for (const preset of CHAT_PRESETS) expect(preset.plan.limit).toBeLessThanOrEqual(MAX_CHAT_ROWS);
   });
 

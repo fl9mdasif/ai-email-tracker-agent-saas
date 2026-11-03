@@ -14,6 +14,7 @@ Fields:
 - senderContains / subjectContains: only a short name, domain or word the user actually typed, otherwise null.
 - accountEmail: only one of the connected addresses listed in the user message, otherwise null.
 - unreadOnly: true only if they ask for unread mail.
+- hotLeadsOnly: true only when they ask about hot leads, keen buyers or who is ready to buy.
 - followUpsDue: true only for questions like "who should I follow up with".
 - order: "priority" when they ask what is most urgent or important, otherwise "newest".
 - limit: how many emails to look at, 1 to 25. Use 15 unless they ask for more or fewer.

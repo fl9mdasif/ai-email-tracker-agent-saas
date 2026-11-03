@@ -18,7 +18,7 @@ describe("splitForPhone", () => {
   it("gives the four main buttons in a fixed order, and everything else goes under More", () => {
     const { primary, more } = splitForPhone(BASE_NAV_ITEMS);
     expect(primary.map((item) => item.href)).toEqual([...PHONE_PRIMARY_HREFS]);
-    expect(more.map((item) => item.href)).toEqual(["/dashboard/follow-ups", "/dashboard/accounts", "/dashboard/settings"]);
+    expect(more.map((item) => item.href)).toEqual(["/dashboard/follow-ups", "/dashboard/leads", "/dashboard/accounts", "/dashboard/settings"]);
   });
 
   it("puts Platform under More for staff", () => {

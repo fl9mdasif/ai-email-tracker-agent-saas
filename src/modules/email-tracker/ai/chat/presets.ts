@@ -4,7 +4,7 @@ import type { QueryPlan } from "./schema";
 export type ChatPreset = { id: string; label: string; question: string; plan: QueryPlan };
 
 /**
- * The four questions people ask most. Each one is a fixed plan, so it needs no planner call: it is
+ * The questions people ask most. Each one is a fixed plan, so it needs no planner call: it is
  * cheaper, quicker, and gives the same answer every time for the same mail.
  */
 export const CHAT_PRESETS: ChatPreset[] = [
@@ -26,6 +26,13 @@ export const CHAT_PRESETS: ChatPreset[] = [
     label: "Which leads replied?",
     question: "Which leads replied this week?",
     plan: { ...EMPTY_PLAN, categories: ["lead_reply"], period: "last_7_days", limit: 15 },
+  },
+  {
+    id: "hot-leads",
+    label: "Show my hot leads",
+    question: "Show my hot leads from the last 30 days.",
+    // Mail the AI scored as clear buying interest. Drafting and sending happen on the Leads page.
+    plan: { ...EMPTY_PLAN, hotLeadsOnly: true, period: "last_30_days", limit: 15 },
   },
   {
     id: "today",

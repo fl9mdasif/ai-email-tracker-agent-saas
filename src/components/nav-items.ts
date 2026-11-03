@@ -1,4 +1,4 @@
-import { CalendarClock, LayoutDashboard, Mail, MessageSquare, Plug, Reply, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { CalendarClock, Flame, LayoutDashboard, Mail, MessageSquare, Plug, Reply, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -7,6 +7,7 @@ export const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Today", icon: LayoutDashboard },
   { href: "/dashboard/needs-reply", label: "Needs reply", icon: Reply },
   { href: "/dashboard/follow-ups", label: "Follow-ups", icon: CalendarClock },
+  { href: "/dashboard/leads", label: "Leads", icon: Flame },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard/mail", label: "Mail", icon: Mail },
   { href: "/dashboard/accounts", label: "Accounts", icon: Plug },

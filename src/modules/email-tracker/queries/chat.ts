@@ -71,6 +71,7 @@ export function describePlan(plan: QueryPlan, periodLabel: string): string {
   if (plan.needsReply !== null) parts.push(plan.needsReply ? "waiting for a reply" : "not waiting for a reply");
   if (plan.handled !== "any") parts.push(plan.handled === "no" ? "not yet marked handled" : "marked handled");
   if (plan.unreadOnly) parts.push("unread");
+  if (plan.hotLeadsOnly) parts.push("from hot leads (clear buying interest)");
   if (plan.senderContains) parts.push(`from a sender matching "${plan.senderContains}"`);
   if (plan.subjectContains) parts.push(`with a subject matching "${plan.subjectContains}"`);
   if (plan.accountEmail) parts.push(`in the mailbox ${plan.accountEmail}`);
@@ -122,6 +123,7 @@ export async function retrieveForChat(db: Database, tenantId: string, rawPlan: Q
     plan.needsReply === true ? and(eq(etEmailAnalysis.status, "analyzed"), eq(etEmailAnalysis.needsReply, true)) : plan.needsReply === false ? eq(etEmailAnalysis.needsReply, false) : undefined,
     plan.handled === "no" ? isNull(etEmailState.emailId) : plan.handled === "yes" ? isNotNull(etEmailState.emailId) : undefined,
     plan.unreadOnly ? eq(etEmails.status, "unread") : undefined,
+    plan.hotLeadsOnly ? eq(etEmailAnalysis.leadTemperature, "hot") : undefined,
     sender ? or(ilike(etEmails.fromAddress, sender), ilike(etEmails.fromName, sender)) : undefined,
     subject ? ilike(etEmails.subject, subject) : undefined,
     accountFilter ? eq(connectedAccounts.identity, accountFilter) : undefined,

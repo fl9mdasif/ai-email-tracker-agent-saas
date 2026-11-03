@@ -73,6 +73,15 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
       { tenantId, userId, role: "user", content: `question ${tag}`, createdAt: new Date(Date.now() - 2000) },
       { tenantId, userId, role: "assistant", content: `answer ${tag}`, citedEmailIds: [row.id], createdAt: new Date(Date.now() - 1000) },
     ]);
+    const [lead] = await db
+      .insert(et.etLeads)
+      .values({ tenantId, contactEmail: "maria@client.com", contactName: "Maria", temperature: "hot", reason: `reason ${tag}`, lastEmailId: row.id })
+      .returning();
+    const [draft] = await db
+      .insert(et.etFollowupDrafts)
+      .values({ tenantId, leadId: lead.id, replyToEmailId: row.id, accountId: account.id, subject: `Re: Subject ${tag}`, body: `draft body ${tag}`, status: "sent", sentAt: new Date() })
+      .returning();
+    await db.insert(et.etSendAudit).values({ tenantId, userId, draftId: draft.id, accountId: account.id, toAddress: "maria@client.com", outcome: "sent" });
     return { tenantId, emailId: row.id };
   }
 
@@ -110,6 +119,12 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
       ["assistant", "answer a"],
     ]);
     expect(JSON.stringify(data)).not.toContain("question b");
+    // Leads, drafts and the send log are the owner's too; the log carries no subject or text.
+    expect(data?.leads).toEqual([expect.objectContaining({ contact: "maria@client.com", temperature: "hot", reason: "reason a" })]);
+    expect(data?.drafts).toEqual([expect.objectContaining({ to: "maria@client.com", subject: "Re: Subject a", body: "draft body a", status: "sent" })]);
+    expect(data?.sends).toEqual([expect.objectContaining({ to: "maria@client.com", from: `a-${suffix}@gmail.com`, outcome: "sent" })]);
+    expect(Object.keys(data?.sends[0] ?? {}).sort()).toEqual(["at", "errorCode", "from", "outcome", "to"]);
+    expect(JSON.stringify(data)).not.toContain("draft body b");
 
     const text = JSON.stringify(data);
     expect(text).not.toContain(SECRET);
@@ -142,13 +157,18 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
       chat: (await db.select().from(et.etChatMessages).where(eq(et.etChatMessages.tenantId, tenantId))).length,
       syncRuns: (await db.select().from(et.etSyncRuns).where(eq(et.etSyncRuns.tenantId, tenantId))).length,
       usage: (await db.select().from(core.llmUsage).where(eq(core.llmUsage.tenantId, tenantId))).length,
+      leads: (await db.select().from(et.etLeads).where(eq(et.etLeads.tenantId, tenantId))).length,
+      drafts: (await db.select().from(et.etFollowupDrafts).where(eq(et.etFollowupDrafts.tenantId, tenantId))).length,
+      sends: (await db.select().from(et.etSendAudit).where(eq(et.etSendAudit.tenantId, tenantId))).length,
     });
 
     const before = await countFor(tenantC);
     expect(Object.values(before).every((n) => n > 0)).toBe(true); // it really had data in every table
 
     expect(await deleteTenant(db, tenantC)).toBe(true);
-    expect(await countFor(tenantC)).toEqual({ tenants: 0, users: 0, accounts: 0, emails: 0, analysis: 0, state: 0, followUps: 0, scanState: 0, chat: 0, syncRuns: 0, usage: 0 });
+    expect(await countFor(tenantC)).toEqual({
+      tenants: 0, users: 0, accounts: 0, emails: 0, analysis: 0, state: 0, followUps: 0, scanState: 0, chat: 0, syncRuns: 0, usage: 0, leads: 0, drafts: 0, sends: 0,
+    });
     expect((await countFor(tenantB)).emails).toBe(1); // another workspace is untouched
     expect(await deleteTenant(db, tenantC)).toBe(false); // already gone
   }, 120_000);

@@ -25,6 +25,8 @@ export const queryPlanSchema = z.object({
   /** One of the workspace's own connected addresses. */
   accountEmail: z.string().max(254).nullable(),
   unreadOnly: z.boolean(),
+  /** Only mail the AI scored as a hot lead (clear buying interest). */
+  hotLeadsOnly: z.boolean(),
   /** Ask for the mail that has an open follow-up due, instead of filtering by the fields above. */
   followUpsDue: z.boolean(),
   order: z.enum(["newest", "priority"]),
@@ -48,6 +50,7 @@ export const queryPlanJsonSchema = {
       subjectContains: { type: ["string", "null"] },
       accountEmail: { type: ["string", "null"] },
       unreadOnly: { type: "boolean" },
+      hotLeadsOnly: { type: "boolean" },
       followUpsDue: { type: "boolean" },
       order: { type: "string", enum: ["newest", "priority"] },
       limit: { type: "integer", minimum: 1, maximum: MAX_CHAT_ROWS },
@@ -62,6 +65,7 @@ export const queryPlanJsonSchema = {
       "subjectContains",
       "accountEmail",
       "unreadOnly",
+      "hotLeadsOnly",
       "followUpsDue",
       "order",
       "limit",

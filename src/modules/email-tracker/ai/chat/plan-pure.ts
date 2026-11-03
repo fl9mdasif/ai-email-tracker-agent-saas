@@ -14,6 +14,7 @@ export const EMPTY_PLAN: QueryPlan = {
   subjectContains: null,
   accountEmail: null,
   unreadOnly: false,
+  hotLeadsOnly: false,
   followUpsDue: false,
   order: "newest",
   limit: 15,

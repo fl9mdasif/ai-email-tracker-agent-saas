@@ -58,6 +58,7 @@ describe.skipIf(!configured)("askChat (Neon, fake AI)", () => {
     subjectContains: null,
     accountEmail: null,
     unreadOnly: false,
+    hotLeadsOnly: false,
     followUpsDue: false,
     order: "priority",
     limit: 15,

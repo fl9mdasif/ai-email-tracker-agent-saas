@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { Database } from "@/core/db";
 import { connectedAccounts, tenants } from "@/core/db/schema";
-import { etChatMessages, etEmailAnalysis, etEmailState, etEmails, etFollowups } from "../db/schema";
+import { etChatMessages, etEmailAnalysis, etEmailState, etEmails, etFollowupDrafts, etFollowups, etLeads, etSendAudit } from "../db/schema";
 
 /** The most emails one export holds, so a huge mailbox cannot exhaust memory. The file says when it was cut. */
 export const EXPORT_EMAIL_LIMIT = 20_000;
@@ -26,6 +26,10 @@ export type TenantExport = {
   followUps: Array<{ dueAt: string; reason: string; source: string; status: string }>;
   /** The saved chat conversation, oldest first (the last 1,000 messages). */
   chat: Array<{ role: string; content: string; status: string; at: string }>;
+  leads: Array<{ contact: string; name: string | null; temperature: string; reason: string; lastContactedAt: string | null }>;
+  drafts: Array<{ to: string; subject: string; body: string; status: string; createdAt: string; sentAt: string | null }>;
+  /** Every send attempt from Loopify. Like the stored log, it has no subject or text. */
+  sends: Array<{ to: string; from: string | null; outcome: string; errorCode: string | null; at: string }>;
   /** True when the mailbox had more than the limit and only the newest emails are included. */
   truncated: boolean;
 };
@@ -91,6 +95,32 @@ export async function exportTenantData(db: Database, tenantId: string, now: Date
     .orderBy(desc(etChatMessages.createdAt))
     .limit(EXPORT_CHAT_LIMIT);
 
+  const [leadRows, draftRows, sendRows] = await Promise.all([
+    db
+      .select({ contact: etLeads.contactEmail, name: etLeads.contactName, temperature: etLeads.temperature, reason: etLeads.reason, lastContactedAt: etLeads.lastContactedAt })
+      .from(etLeads)
+      .where(eq(etLeads.tenantId, tenantId)),
+    db
+      .select({
+        to: etLeads.contactEmail,
+        subject: etFollowupDrafts.subject,
+        body: etFollowupDrafts.body,
+        status: etFollowupDrafts.status,
+        createdAt: etFollowupDrafts.createdAt,
+        sentAt: etFollowupDrafts.sentAt,
+      })
+      .from(etFollowupDrafts)
+      .innerJoin(etLeads, and(eq(etLeads.id, etFollowupDrafts.leadId), eq(etLeads.tenantId, tenantId)))
+      .where(eq(etFollowupDrafts.tenantId, tenantId))
+      .orderBy(desc(etFollowupDrafts.createdAt)),
+    db
+      .select({ to: etSendAudit.toAddress, from: connectedAccounts.identity, outcome: etSendAudit.outcome, errorCode: etSendAudit.errorCode, at: etSendAudit.createdAt })
+      .from(etSendAudit)
+      .leftJoin(connectedAccounts, and(eq(connectedAccounts.id, etSendAudit.accountId), eq(connectedAccounts.tenantId, tenantId)))
+      .where(eq(etSendAudit.tenantId, tenantId))
+      .orderBy(desc(etSendAudit.createdAt)),
+  ]);
+
   const truncated = rows.length > EXPORT_EMAIL_LIMIT;
   return {
     exportedAt: now.toISOString(),
@@ -113,6 +143,9 @@ export async function exportTenantData(db: Database, tenantId: string, now: Date
     })),
     followUps: followUps.map((item) => ({ ...item, dueAt: item.dueAt.toISOString() })),
     chat: chatRows.reverse().map((message) => ({ role: message.role, content: message.content, status: message.status, at: message.createdAt.toISOString() })),
+    leads: leadRows.map((lead) => ({ ...lead, lastContactedAt: lead.lastContactedAt?.toISOString() ?? null })),
+    drafts: draftRows.map((draft) => ({ ...draft, createdAt: draft.createdAt.toISOString(), sentAt: draft.sentAt?.toISOString() ?? null })),
+    sends: sendRows.map((send) => ({ ...send, at: send.at.toISOString() })),
     truncated,
   };
 }
