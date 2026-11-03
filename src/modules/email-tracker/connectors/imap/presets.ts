@@ -14,6 +14,18 @@ export type ImapPreset = {
   secure: boolean;
 };
 
+/**
+ * Where each provider accepts outgoing mail: implicit TLS on port 465, signed in with the same
+ * address and app password as IMAP. Sending only ever goes to a host listed here.
+ */
+export const SMTP_HOSTS: Record<ImapPresetKey, { host: string; port: number; secure: boolean }> = {
+  hostinger: { host: "smtp.hostinger.com", port: 465, secure: true },
+  "zoho-com": { host: "smtp.zoho.com", port: 465, secure: true },
+  "zoho-eu": { host: "smtp.zoho.eu", port: 465, secure: true },
+  "zoho-in": { host: "smtp.zoho.in", port: 465, secure: true },
+  "zoho-com-au": { host: "smtp.zoho.com.au", port: 465, secure: true },
+};
+
 export const IMAP_PRESETS: Record<ImapPresetKey, ImapPreset> = {
   hostinger: { key: "hostinger", label: "Hostinger", host: "imap.hostinger.com", port: 993, secure: true },
   "zoho-com": { key: "zoho-com", label: "Zoho Mail (zoho.com)", host: "imap.zoho.com", port: 993, secure: true },

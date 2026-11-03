@@ -3,6 +3,8 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 /** Name of the short-lived cookie that ties the Google redirect back to the browser that started it. */
 export const OAUTH_STATE_COOKIE = "loopify_gmail_oauth";
 export const OAUTH_STATE_MAX_AGE_SECONDS = 600;
+/** Set only by Allow sending: the lead (a uuid) to return to once Google has answered. */
+export const OAUTH_RETURN_COOKIE = "loopify_gmail_return";
 
 /** A fresh, unguessable value for the `state` parameter. */
 export function newOAuthState(): string {

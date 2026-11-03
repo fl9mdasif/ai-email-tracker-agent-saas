@@ -138,7 +138,13 @@ describe("tokens", () => {
 
   it("needs both tokens from the code exchange", async () => {
     const good = vi.fn(async () => reply(200, { access_token: "at", refresh_token: "rt" }));
-    expect(await exchangeCode("code", good as unknown as typeof fetch)).toEqual({ accessToken: "at", refreshToken: "rt" });
+    expect(await exchangeCode("code", good as unknown as typeof fetch)).toEqual({ accessToken: "at", refreshToken: "rt", scopes: [] });
+    // The permissions Google granted come back too, so the send permission can be checked later.
+    const withScopes = vi.fn(async () => reply(200, { access_token: "at", refresh_token: "rt", scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send" }));
+    expect((await exchangeCode("code", withScopes as unknown as typeof fetch)).scopes).toEqual([
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send",
+    ]);
     const noRefresh = vi.fn(async () => reply(200, { access_token: "at" }));
     await expect(exchangeCode("code", noRefresh as unknown as typeof fetch)).rejects.toBeInstanceOf(GmailError);
   });

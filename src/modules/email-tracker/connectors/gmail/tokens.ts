@@ -1,6 +1,6 @@
 import { getAppUrl, requireConfig } from "@/core/config";
 import { GmailError } from "./errors";
-import { GMAIL_SCOPE } from "./schema";
+import { GMAIL_SCOPE, GMAIL_SEND_SCOPE, parseScopes } from "./schema";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -13,25 +13,29 @@ export function googleRedirectUri(): string {
   return `${getAppUrl()}/api/connect/google/callback`;
 }
 
-/** Where to send the user to approve read-only mail access. `loginHint` pre-selects an account on Reconnect. */
-export function buildConsentUrl(state: string, loginHint?: string): string {
+/**
+ * Where to send the user to approve mail access. `loginHint` pre-selects an account on Reconnect.
+ * Connect asks for read-only access only. `allowSending` (pressed on the first Send) asks for the
+ * separate send permission on top of the read access the account already has.
+ */
+export function buildConsentUrl(state: string, loginHint?: string, options: { allowSending?: boolean } = {}): string {
   const params = new URLSearchParams({
     client_id: requireConfig("GOOGLE_CLIENT_ID"),
     redirect_uri: googleRedirectUri(),
     response_type: "code",
-    scope: GMAIL_SCOPE,
+    scope: options.allowSending ? `${GMAIL_SCOPE} ${GMAIL_SEND_SCOPE}` : GMAIL_SCOPE,
     access_type: "offline",
     // Always show the account picker (so each Connect can add a different Gmail) and always
     // return a refresh token.
     prompt: "select_account consent",
-    include_granted_scopes: "false",
+    include_granted_scopes: options.allowSending ? "true" : "false",
     state,
   });
   if (loginHint) params.set("login_hint", loginHint);
   return `${AUTH_URL}?${params.toString()}`;
 }
 
-type TokenReply = { access_token?: string; refresh_token?: string; error?: string };
+type TokenReply = { access_token?: string; refresh_token?: string; scope?: string; error?: string };
 
 async function postToken(body: Record<string, string>, fetchFn: FetchLike): Promise<TokenReply> {
   let response: Response;
@@ -86,12 +90,15 @@ export async function revokeRefreshToken(refreshToken: string, fetchFn: FetchLik
   }
 }
 
-/** Trades the one-time code from the consent screen for tokens. */
-export async function exchangeCode(code: string, fetchFn: FetchLike = fetch): Promise<{ accessToken: string; refreshToken: string }> {
+/** Trades the one-time code from the consent screen for tokens, with the permissions Google actually granted. */
+export async function exchangeCode(
+  code: string,
+  fetchFn: FetchLike = fetch,
+): Promise<{ accessToken: string; refreshToken: string; scopes: string[] }> {
   const reply = await postToken(
     { grant_type: "authorization_code", code, redirect_uri: googleRedirectUri() },
     fetchFn,
   );
   if (!reply.access_token || !reply.refresh_token) throw new GmailError("unknown");
-  return { accessToken: reply.access_token, refreshToken: reply.refresh_token };
+  return { accessToken: reply.access_token, refreshToken: reply.refresh_token, scopes: parseScopes(reply.scope) };
 }
