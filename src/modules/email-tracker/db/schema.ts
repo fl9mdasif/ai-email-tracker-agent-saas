@@ -11,7 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { connectedAccounts } from "@/core/db/schema/connected-accounts";
-import { tenants } from "@/core/db/schema/tenancy";
+import { tenants, users } from "@/core/db/schema/tenancy";
 
 /** Normalized email, the same shape whichever provider it came from. */
 export const etEmails = pgTable(
@@ -192,6 +192,37 @@ export const etFollowups = pgTable(
     index("et_followups_tenant_status_due_idx").on(table.tenantId, table.status, table.dueAt),
     // The AI never creates two follow-ups for the same email, however often analysis runs.
     uniqueIndex("et_followups_ai_email_uq").on(table.emailId).where(sql`${table.source} = 'ai'`),
+  ],
+);
+
+/**
+ * The chat conversation, one rolling thread per user. Answers can mention what the AI made of
+ * someone's mail, so these rows belong to the workspace: the owner can clear them, they are in
+ * the data export, they go with the workspace, and platform staff never read them.
+ */
+export const etChatMessages = pgTable(
+  "et_chat_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    content: text("content").notNull(),
+    /** Ids of the emails an answer is based on, shown as links. Empty for questions. */
+    citedEmailIds: jsonb("cited_email_ids").$type<string[]>().notNull().default([]),
+    /** "paused" means the AI service was unavailable, so the attempt is not counted against the rate limit. */
+    status: text("status", { enum: ["ok", "error", "paused"] })
+      .notNull()
+      .default("ok"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("et_chat_messages_tenant_created_idx").on(table.tenantId, table.createdAt),
+    index("et_chat_messages_user_created_idx").on(table.tenantId, table.userId, table.createdAt),
   ],
 );
 
