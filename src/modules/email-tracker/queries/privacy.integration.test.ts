@@ -38,7 +38,7 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
     const { ensureTenantUser } = await import("@/core/tenancy/provision");
     const { saveCredentials } = await import("@/core/vault");
     const { syncAccount } = await import("../sync/sync-account");
-    const tenantId = (await ensureTenantUser(db, { email })).tenantId;
+    const { tenantId, userId } = await ensureTenantUser(db, { email });
     tenantIds.push(tenantId);
     const account = await saveCredentials(db, {
       tenantId,
@@ -69,6 +69,10 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
     await m.createReminder(db, tenantId, row.id, new Date(Date.now() + 86_400_000), `remind ${tag}`);
     await db.insert(core.llmUsage).values({ tenantId, usageTag: "email-analysis", model: "test-model", status: "ok" });
     await db.insert(et.etScanState).values({ tenantId, paused: false });
+    await db.insert(et.etChatMessages).values([
+      { tenantId, userId, role: "user", content: `question ${tag}`, createdAt: new Date(Date.now() - 2000) },
+      { tenantId, userId, role: "assistant", content: `answer ${tag}`, citedEmailIds: [row.id], createdAt: new Date(Date.now() - 1000) },
+    ]);
     return { tenantId, emailId: row.id };
   }
 
@@ -100,6 +104,12 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
       ai: { category: "needs_reply", priority: 1, summary: "summary a" },
     });
     expect(data?.followUps).toEqual([expect.objectContaining({ reason: "remind a", source: "manual", status: "open" })]);
+    // The saved chat is in the export, oldest first, and only this workspace's.
+    expect(data?.chat.map((message) => [message.role, message.content])).toEqual([
+      ["user", "question a"],
+      ["assistant", "answer a"],
+    ]);
+    expect(JSON.stringify(data)).not.toContain("question b");
 
     const text = JSON.stringify(data);
     expect(text).not.toContain(SECRET);
@@ -129,6 +139,7 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
       state: (await db.select().from(et.etEmailState).where(eq(et.etEmailState.tenantId, tenantId))).length,
       followUps: (await db.select().from(et.etFollowups).where(eq(et.etFollowups.tenantId, tenantId))).length,
       scanState: (await db.select().from(et.etScanState).where(eq(et.etScanState.tenantId, tenantId))).length,
+      chat: (await db.select().from(et.etChatMessages).where(eq(et.etChatMessages.tenantId, tenantId))).length,
       syncRuns: (await db.select().from(et.etSyncRuns).where(eq(et.etSyncRuns.tenantId, tenantId))).length,
       usage: (await db.select().from(core.llmUsage).where(eq(core.llmUsage.tenantId, tenantId))).length,
     });
@@ -137,7 +148,7 @@ describe.skipIf(!configured)("export, usage and workspace delete (Neon)", () => 
     expect(Object.values(before).every((n) => n > 0)).toBe(true); // it really had data in every table
 
     expect(await deleteTenant(db, tenantC)).toBe(true);
-    expect(await countFor(tenantC)).toEqual({ tenants: 0, users: 0, accounts: 0, emails: 0, analysis: 0, state: 0, followUps: 0, scanState: 0, syncRuns: 0, usage: 0 });
+    expect(await countFor(tenantC)).toEqual({ tenants: 0, users: 0, accounts: 0, emails: 0, analysis: 0, state: 0, followUps: 0, scanState: 0, chat: 0, syncRuns: 0, usage: 0 });
     expect((await countFor(tenantB)).emails).toBe(1); // another workspace is untouched
     expect(await deleteTenant(db, tenantC)).toBe(false); // already gone
   }, 120_000);

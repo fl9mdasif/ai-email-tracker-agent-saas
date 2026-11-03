@@ -1,10 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { Database } from "@/core/db";
 import { connectedAccounts, tenants } from "@/core/db/schema";
-import { etEmailAnalysis, etEmailState, etEmails, etFollowups } from "../db/schema";
+import { etChatMessages, etEmailAnalysis, etEmailState, etEmails, etFollowups } from "../db/schema";
 
 /** The most emails one export holds, so a huge mailbox cannot exhaust memory. The file says when it was cut. */
 export const EXPORT_EMAIL_LIMIT = 20_000;
+export const EXPORT_CHAT_LIMIT = 1_000;
 
 export type TenantExport = {
   exportedAt: string;
@@ -23,6 +24,8 @@ export type TenantExport = {
     ai: { category: string; priority: number | null; needsReply: boolean | null; summary: string | null; suggestedAction: string | null } | null;
   }>;
   followUps: Array<{ dueAt: string; reason: string; source: string; status: string }>;
+  /** The saved chat conversation, oldest first (the last 1,000 messages). */
+  chat: Array<{ role: string; content: string; status: string; at: string }>;
   /** True when the mailbox had more than the limit and only the newest emails are included. */
   truncated: boolean;
 };
@@ -81,6 +84,13 @@ export async function exportTenantData(db: Database, tenantId: string, now: Date
     .from(etFollowups)
     .where(eq(etFollowups.tenantId, tenantId));
 
+  const chatRows = await db
+    .select({ role: etChatMessages.role, content: etChatMessages.content, status: etChatMessages.status, createdAt: etChatMessages.createdAt })
+    .from(etChatMessages)
+    .where(eq(etChatMessages.tenantId, tenantId))
+    .orderBy(desc(etChatMessages.createdAt))
+    .limit(EXPORT_CHAT_LIMIT);
+
   const truncated = rows.length > EXPORT_EMAIL_LIMIT;
   return {
     exportedAt: now.toISOString(),
@@ -102,6 +112,7 @@ export async function exportTenantData(db: Database, tenantId: string, now: Date
           : null,
     })),
     followUps: followUps.map((item) => ({ ...item, dueAt: item.dueAt.toISOString() })),
+    chat: chatRows.reverse().map((message) => ({ role: message.role, content: message.content, status: message.status, at: message.createdAt.toISOString() })),
     truncated,
   };
 }

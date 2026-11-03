@@ -52,6 +52,7 @@ The product will later be sold to other clients, so build it as multi-tenant fro
 - connected\_accounts (tenant\_id, provider, encrypted\_credentials, status, last\_synced\_at)
 - emails (normalized shape above, unique on account\_id plus provider message id)
 - email\_analysis (email\_id, category, priority, needs\_reply, summary, suggested\_action, model, created\_at)
+- et\_chat\_messages (tenant\_id, user\_id, role user or assistant, content, cited\_email\_ids, status ok, error or paused, created\_at)
 - platform\_settings (core, one row: ai\_scan\_interval\_minutes, updated\_by, updated\_at) and et\_scan\_state (tenant\_id, paused, last\_scan\_started\_at); tenants also has a `timezone` column
 - followups (tenant\_id, email\_id or thread\_id, due\_at, reason, status)
 - leads (tenant\_id, source, name, email, status, last\_activity\_at) for Instantly and Apollo data
@@ -149,6 +150,17 @@ The client can sign in, connect his accounts, see today's emails grouped by prio
 - **Mail**: all synced mail with search and filters (account, category, priority, handled, unread), the mailbox shown on every mail, and paging. **Email detail** shows the plain-text body (never rendered as HTML), the AI result, **Open in Gmail**, and **Analyze this email** for older mail the automatic scan skipped.
 - **Settings**: time zone, AI usage (today and 30 days), **Export my data** (JSON, never passwords or tokens) and **Delete my workspace** (type the name; Gmail access is cancelled with Google).
 - Mobile first: menu with counts, bottom bar on phones.
+
+## Chat (Milestone 6)
+
+Ask the mailbox in plain words (English or Bangla) on `/dashboard/chat`. How a question is answered:
+
+1. **Four preset questions** (What needs my action today? Who should I follow up with? Which leads replied? What came in today?) use a fixed filter and skip the planner.
+2. **Free-text questions** go to a **planner** call that sees only the question, a few earlier turns and the workspace's own mailbox addresses, and returns a filter from a closed list (categories, priority, reply need, handled, period, a short literal sender or subject text, one of the workspace's own mailboxes, unread, follow-ups due, order, limit). The AI never writes SQL. If it cannot produce a valid filter the chat looks at today's mail and says so.
+3. **Retrieval** runs tenant-scoped SQL for **at most 25 emails**, with no body text (the 200-character preview only for mail the AI has not analysed), plus exact totals and counts by category and priority.
+4. The **answer** call gets those rows as **untrusted data inside delimiters** (lookalike tags in mail text are defused), answers only from them, in the language of the question, and cites email ids; cited ids that were not retrieved are dropped. Answers are shown as plain text.
+
+There are no tools: the chat cannot send, reply, delete, move or label anything. Limits: 20 questions per hour and 100 per 24 hours per workspace (shared by its users), checked before any AI call; 500 characters per question; attempts that failed only because the AI service was paused do not count. Conversations are **saved** per person (last 30 shown), can be cleared with **Clear chat**, are in **Export my data**, go with the workspace when it is deleted, and platform staff can never read them.
 
 ## Gmail connection (built early, in Milestone 7)
 

@@ -66,7 +66,7 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="font-display text-lg">Your data</CardTitle>
           <CardDescription>
-            Download a copy of your workspace: accounts (never passwords), mail, AI results and follow-ups, as one JSON file.
+            Download a copy of your workspace: accounts (never passwords), mail, AI results, follow-ups and your chat, as one JSON file.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -82,7 +82,7 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="font-display text-lg text-destructive">Delete my workspace</CardTitle>
           <CardDescription>
-            This removes your workspace, every connected account, all synced mail and everything the AI made of it. Gmail access is
+            This removes your workspace, every connected account, all synced mail, your chat and everything the AI made of it. Gmail access is
             cancelled with Google. It cannot be undone. Export your data first if you want a copy.
           </CardDescription>
         </CardHeader>

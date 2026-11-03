@@ -15,7 +15,9 @@ The full product spec is in [Product.md](Product.md).
 | 7 (part) | Connect Gmail (read-only OAuth), several Gmail accounts | Code complete; needs Google Cloud setup and a real-Gmail test |
 | 4 | AI analysis: category, priority, summary, next action (today's mail only, super-admin scan interval) | Code complete; live run verified on Groq |
 | 5 | Tenant dashboard: Today by priority, Needs reply, Follow-ups, Mail, email detail, export and delete | Code complete; needs a look in the browser |
-| 5b+ | Super admin dashboard, chat, Outlook, drafts and Send, outreach tools | Planned |
+| 6 | Chat: ask your mailbox (planner, SQL retrieval, answer) | Code complete; needs a real-AI try in the browser |
+| 5b | Platform (super admin) dashboard with roles | B.1 to B.4 done (roles, plans, workspaces); the rest in progress |
+| 8+ | Outlook, drafts and Send, outreach tools | Planned |
 
 ## Tech stack
 
@@ -98,6 +100,14 @@ Rules that hold everywhere:
 - **Needs reply**, **Follow-ups** (AI suggestions plus your own **Remind me**), and **Mail** (search, filters by account, category, priority, handled and unread).
 - Open any email to read it as plain text, see what the AI made of it, open it in Gmail, or press **Analyze this email** for mail older than today.
 - **Settings**: time zone, AI usage, **Export my data** (JSON) and **Delete my workspace**.
+
+## Chat
+
+Open **Chat** and ask about your mail in plain words, in English or Bangla, or press one of the four suggested questions (What needs my action today? Who should I follow up with? Which leads replied? What came in today?).
+
+- The AI first turns your question into a filter from a fixed list (it never writes SQL and never sees any email while doing so). The app then runs a tenant-scoped query for **at most 25 emails**, with no email bodies, and a second AI call answers only from those rows. Mail text is treated as untrusted data.
+- The chat can only read: it cannot send, reply, delete or change anything.
+- Limit: 20 questions per hour and 100 per day for a workspace. Conversations are saved so follow-up questions work; **Clear chat** deletes yours, and they are part of **Export my data** and removed with **Delete my workspace**.
 
 ## AI analysis
 
