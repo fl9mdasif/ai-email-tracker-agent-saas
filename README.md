@@ -17,7 +17,8 @@ The full product spec is in [Product.md](Product.md).
 | 5 | Tenant dashboard: Today by priority, Needs reply, Follow-ups, Mail, email detail, export and delete | Code complete; needs a look in the browser |
 | 6 | Chat: ask your mailbox (planner, SQL retrieval, answer) | Code complete; needs a real-AI try in the browser |
 | 5b | Platform (super admin) dashboard with roles | B.1 to B.4 done (roles, plans, workspaces); the rest in progress |
-| 8+ | Outlook, drafts and Send, outreach tools | Planned |
+| 8 | Hot-lead follow-up: scoring, AI drafts, review and one-click Send (SMTP and Gmail) | Code complete; needs a real send from your mailbox |
+| 9+ | Outlook, Instantly and Apollo, digest and push | Planned |
 
 ## Tech stack
 
@@ -26,6 +27,7 @@ The full product spec is in [Product.md](Product.md).
 - Neon Postgres with Drizzle ORM
 - Auth.js v5 (Google sign-in)
 - Inngest for background jobs
+- imapflow and mailparser to read mail; nodemailer to send it (SMTP, and building the message for Gmail)
 - OpenAI (production) or Groq (free testing), behind a provider-neutral gateway (`src/core/llm`)
 - Vitest for tests
 
@@ -108,6 +110,16 @@ Open **Chat** and ask about your mail in plain words, in English or Bangla, or p
 - The AI first turns your question into a filter from a fixed list (it never writes SQL and never sees any email while doing so). The app then runs a tenant-scoped query for **at most 25 emails**, with no email bodies, and a second AI call answers only from those rows. Mail text is treated as untrusted data.
 - The chat can only read: it cannot send, reply, delete or change anything.
 - Limit: 20 questions per hour and 100 per day for a workspace. Conversations are saved so follow-up questions work; **Clear chat** deletes yours, and they are part of **Export my data** and removed with **Delete my workspace**.
+
+## Leads and follow-ups (human in the loop)
+
+- During its normal scan the AI also scores a prospect's mail **hot**, **warm** or **cold** with a short reason (hot: asks for a price, a call or a demo, or replies positively). No extra AI calls. **Score older leads** on the Leads page scores lead replies from the last 30 days once (at most 50 per press).
+- **Leads** lists them hottest first. Open one to see their last email and a follow-up the AI drafts from the real thread, in their language and tone. It never invents prices, dates or links; it leaves placeholders like [price] for you. The draft is written only when you open the lead or press **Regenerate** (at most 30 drafts a day).
+- **Edit**, **Save**, **Regenerate**, **Skip** (hides the lead for 7 days) or **Send**. Send asks once more, naming From and To, then sends **exactly one email** from the mailbox the lead wrote to, as a reply in the same thread. A double click or a second tab cannot send it twice. There is no bulk send and no automatic send.
+- After a send the lead rests for 3 days and a reminder appears on Follow-ups. At most 50 sends a day per workspace.
+- Every send attempt is logged (who, which draft, which mailbox, to whom, outcome) without the subject or the text. Leads, drafts and the log are in **Export my data** and go with **Delete my workspace**.
+- **Hostinger and Zoho** send over SMTP with the same app password, and a copy goes to the mailbox's Sent folder.
+- **Gmail** keeps reading and sending as separate permissions. The first Send from a Gmail account shows **Allow sending**, which asks Google only for `gmail.send`. Add `https://www.googleapis.com/auth/gmail.send` to the consent screen in Google Cloud first.
 
 ## AI analysis
 

@@ -119,6 +119,21 @@ The user can ask in chat: show my hot leads, or follow up with the hot leads. Th
 
 Add this as milestone 7 and renumber the later milestones. Gmail and Outlook OAuth stay before it so sending works for them.
 
+### How it is built (Milestone 8, as shipped)
+
+- **Scoring** happens inside the normal AI scan, so it costs no extra AI calls. Each prospect's email gets hot, warm or cold and a one-line reason, and the newest email from a sender decides their lead (`et_leads`). Spam, promotions and bills are never leads. **Score older leads** (Leads page) scores up to 50 unscored lead replies from the last 30 days. Until Instantly and Apollo are connected (Milestone 9), leads come from inbox replies only.
+- **Drafts** are written only when the user opens a lead or presses Regenerate (at most 30 a day per workspace). The AI sees the lead, the reason and the last six emails of the thread as untrusted data. It writes in the lead's language and tone, never invents prices, dates or links, and leaves `[placeholders]` instead. The subject is always "Re:" plus the original, so the reply threads.
+- **Review screen** (`/dashboard/leads/<id>`): the lead, their last email and the draft in editable fields. The buttons are **Send** (a second confirm names From and To), **Save**, **Regenerate** and **Skip** (rests the lead for 7 days).
+- **Send**:
+  - One click sends one email. The draft is claimed with one conditional update before anything is sent, so double clicks and parallel tabs cannot send twice.
+  - The reply goes from the mailbox the lead wrote to, with In-Reply-To and References set so it threads under their email.
+  - Hostinger and Zoho send over SMTP (port 465, only the provider's own host, same app password), and a copy is saved to the Sent folder.
+  - Gmail sends through the API in the same thread, only with the separate `gmail.send` permission. That permission is asked for on the first Send through **Allow sending**, and read and send stay separate scopes.
+  - Afterwards the draft is marked sent, the lead rests for 3 days and a Follow-ups reminder is due then. A workspace can send at most 50 emails a day.
+- **Audit**: every attempt is written to `et_send_audit` (who, which draft, which mailbox, to whom, outcome, error code), with no subject and no body. Server and Google error text is never stored or logged, only short codes.
+- **Chat** gains "Show my hot leads". Chat still cannot send.
+- **Export my data** includes leads, drafts and the send log. **Delete my workspace** removes them.
+
 ## Platform-ready rules (reuse in a future multi-product platform)
 
 This app will later become one module inside a larger AI platform that also hosts JobAI and other products. Build it now so the shared parts can be lifted out without a rewrite.
