@@ -322,3 +322,37 @@ export async function listAccountOptions(db: Database, tenantId: string): Promis
     .where(eq(connectedAccounts.tenantId, tenantId))
     .orderBy(asc(connectedAccounts.identity));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Today page helpers
+
+export type OnboardingState = { accounts: number; emails: number; analyzed: number };
+
+/** How far a new tenant has got: accounts connected, mail stored, mail the AI has looked at. */
+export async function getOnboardingState(db: Database, tenantId: string): Promise<OnboardingState> {
+  const result = await db.execute(sql`
+    select
+      (select count(*) from connected_accounts where tenant_id = ${tenantId})::int as accounts,
+      (select count(*) from et_emails where tenant_id = ${tenantId})::int as emails,
+      (select count(*) from et_email_analysis where tenant_id = ${tenantId} and status = 'analyzed')::int as analyzed
+  `);
+  const row = (result.rows[0] ?? {}) as { accounts?: number; emails?: number; analyzed?: number };
+  return { accounts: row.accounts ?? 0, emails: row.emails ?? 0, analyzed: row.analyzed ?? 0 };
+}
+
+export type AccountProblem = AccountRef & { message: string | null };
+
+/** Accounts that stopped syncing and need the user (for example Gmail that must be reconnected). */
+export async function listAccountsNeedingAttention(db: Database, tenantId: string): Promise<AccountProblem[]> {
+  return db
+    .select({
+      id: connectedAccounts.id,
+      identity: connectedAccounts.identity,
+      brand: connectedAccounts.brand,
+      provider: connectedAccounts.provider,
+      message: connectedAccounts.statusMessage,
+    })
+    .from(connectedAccounts)
+    .where(and(eq(connectedAccounts.tenantId, tenantId), eq(connectedAccounts.status, "error")))
+    .orderBy(asc(connectedAccounts.identity));
+}

@@ -43,9 +43,41 @@ export function startOfTodayIn(timeZone: string, now: Date = new Date()): Date {
   const part = (type: string) => Number(parts.find((entry) => entry.type === type)?.value);
   const localMidnightAsUtc = Date.UTC(part("year"), part("month") - 1, part("day"));
 
+  return localMidnightToInstant(localMidnightAsUtc, zone);
+}
+
+/** Turns "this calendar day at 00:00 read as UTC" into the real instant that day began in the zone. */
+function localMidnightToInstant(localMidnightAsUtc: number, zone: string): Date {
   // The offset can differ between the guess and the real midnight when a clock change falls in
   // between, so settle it in two passes.
   let instant = localMidnightAsUtc - offsetMs(new Date(localMidnightAsUtc), zone);
   instant = localMidnightAsUtc - offsetMs(new Date(instant), zone);
   return new Date(instant);
+}
+
+/** The instant a calendar date ("2026-11-05") began in the zone, or null when it is not a real date. */
+export function startOfLocalDate(isoDate: string, timeZone: string): Date | null {
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const utcMidnight = Date.UTC(year, month - 1, day);
+  const check = new Date(utcMidnight);
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return null;
+  return localMidnightToInstant(utcMidnight, isValidTimeZone(timeZone) ? timeZone : "UTC");
+}
+
+/**
+ * How a mail time reads in a list, in the tenant's time zone: "Today, 14:05", "Yesterday, 09:10",
+ * "12 Oct, 08:00" for this year, "12 Oct 2025" before that.
+ */
+export function formatMailTime(date: Date, timeZone: string, now: Date = new Date()): string {
+  const zone = isValidTimeZone(timeZone) ? timeZone : "UTC";
+  const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: zone }).format(date);
+  const todayStart = startOfTodayIn(zone, now);
+  if (date.getTime() >= todayStart.getTime()) return `Today, ${clock}`;
+  const yesterdayStart = startOfTodayIn(zone, new Date(todayStart.getTime() - 12 * 60 * 60 * 1000));
+  if (date.getTime() >= yesterdayStart.getTime()) return `Yesterday, ${clock}`;
+  const year = (value: Date) => new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: zone }).format(value);
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: zone }).format(date);
+  return year(date) === year(now) ? `${day}, ${clock}` : `${day} ${year(date)}`;
 }
