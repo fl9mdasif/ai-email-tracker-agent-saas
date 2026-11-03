@@ -159,3 +159,17 @@ export async function retrieveForChat(db: Database, tenantId: string, rawPlan: Q
   return { rows: mail.map((row) => toChatRow(row)), total, byCategory, byPriority, description: describePlan(plan, period.label), notes };
 }
 
+
+/** A short label for an email the chat cited, so the page can show it as a link. No body, no AI text. */
+export type EmailBrief = { id: string; from: string; subject: string };
+
+/** Sender and subject for some of this workspace's emails. Ids that are not the tenant's are simply missing from the result. */
+export async function getEmailBriefs(db: Database, tenantId: string, emailIds: string[]): Promise<Map<string, EmailBrief>> {
+  const valid = [...new Set(emailIds.filter((id) => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 100);
+  if (valid.length === 0) return new Map();
+  const rows = await db
+    .select({ id: etEmails.id, fromAddress: etEmails.fromAddress, fromName: etEmails.fromName, subject: etEmails.subject })
+    .from(etEmails)
+    .where(and(eq(etEmails.tenantId, tenantId), inArray(etEmails.id, valid)));
+  return new Map(rows.map((row) => [row.id, { id: row.id, from: cut(row.fromName ?? row.fromAddress, 80), subject: cut(row.subject || "(no subject)", 120) }]));
+}

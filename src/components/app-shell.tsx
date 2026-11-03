@@ -1,33 +1,16 @@
 "use client";
 
-import { CalendarClock, LayoutDashboard, Mail, Plug, Reply, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+import { type NavItem, isActive, navItemsFor, splitForPhone } from "./nav-items";
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
 type Badges = Record<string, number>;
-
-const BASE_NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Today", icon: LayoutDashboard },
-  { href: "/dashboard/needs-reply", label: "Needs reply", icon: Reply },
-  { href: "/dashboard/follow-ups", label: "Follow-ups", icon: CalendarClock },
-  { href: "/dashboard/mail", label: "Mail", icon: Mail },
-  { href: "/dashboard/accounts", label: "Accounts", icon: Plug },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-];
-
-/** Shown only to super admins. */
-const ADMIN_NAV_ITEM: NavItem = { href: "/admin", label: "Platform", icon: ShieldCheck };
-
-/** Today is only its own page; the other items also cover the pages under them (a mail's detail page, for example). */
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+type NavProps = { items: NavItem[]; badges: Badges };
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -37,8 +20,6 @@ function Badge({ count }: { count: number }) {
     </span>
   );
 }
-
-type NavProps = { items: NavItem[]; badges: Badges };
 
 function SideNav({ items, badges, pathname }: NavProps & { pathname: string }) {
   return (
@@ -65,22 +46,36 @@ function SideNav({ items, badges, pathname }: NavProps & { pathname: string }) {
   );
 }
 
+const phoneButton = "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-1 text-[10px] text-muted-foreground";
+
+/**
+ * The phone bar: four main buttons and a "More" button that opens the rest (Follow-ups, Accounts,
+ * Settings and, for staff, Platform), so the bar never gets crowded.
+ */
 function BottomNav({ items, badges, pathname }: NavProps & { pathname: string }) {
+  const { primary, more } = splitForPhone(items);
+  // The menu remembers which page it was opened on, so going to another page closes it with no effect needed.
+  const [openFor, setOpenFor] = useState<string | null>(null);
+  const open = openFor === pathname;
+  const setOpen = (value: boolean) => setOpenFor(value ? pathname : null);
+  const moreActive = more.some((item) => isActive(pathname, item.href));
+  const moreCount = more.reduce((sum, item) => sum + (badges[item.href] ?? 0), 0);
+
+  // Escape closes it.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpenFor(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-background py-1.5 md:hidden">
-      {items.map(({ href, label, icon: Icon }) => {
+      {primary.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         const count = badges[href] ?? 0;
         return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-1 text-[10px] text-muted-foreground",
-              active && "text-primary",
-            )}
-          >
+          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn(phoneButton, active && "text-primary")}>
             <span className="relative">
               <Icon className="size-5" />
               {count > 0 ? <span aria-label={`${count} waiting`} className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-brand" /> : null}
@@ -89,6 +84,40 @@ function BottomNav({ items, badges, pathname }: NavProps & { pathname: string })
           </Link>
         );
       })}
+
+      <div className="relative flex min-w-0 flex-1">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={() => setOpen(!open)}
+          className={cn(phoneButton, "w-full", (moreActive || open) && "text-primary")}
+        >
+          <span className="relative">
+            <Ellipsis className="size-5" />
+            {moreCount > 0 ? <span aria-label={`${moreCount} waiting`} className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-brand" /> : null}
+          </span>
+          <span>More</span>
+        </button>
+        {open ? (
+          <div role="menu" aria-label="More" className="absolute right-1 bottom-full mb-2 grid w-48 gap-0.5 rounded-xl border bg-popover p-1.5 shadow-lg">
+            {more.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                role="menuitem"
+                aria-current={isActive(pathname, href) ? "page" : undefined}
+                onClick={() => setOpen(false)}
+                className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted", isActive(pathname, href) && "bg-muted font-medium")}
+              >
+                <Icon className="size-4" />
+                {label}
+                <Badge count={badges[href] ?? 0} />
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </nav>
   );
 }
@@ -116,7 +145,7 @@ export function AppShell({
   /** Small counts beside a menu item, by its address (for example the unhandled needs-reply mail). */
   badges?: Badges;
 }) {
-  const items = showAdmin ? [...BASE_NAV_ITEMS, ADMIN_NAV_ITEM] : BASE_NAV_ITEMS;
+  const items = navItemsFor(showAdmin);
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
