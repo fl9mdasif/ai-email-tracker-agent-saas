@@ -108,7 +108,7 @@ function toMailRow(record: MailRecord): MailRow {
  * The shared mail query. Every table in it is scoped to the tenant: the emails, the accounts
  * they belong to, their AI results and the user's handled marks.
  */
-async function selectMail(db: Database, tenantId: string, where: SQL | undefined, order: SQL[], limit: number): Promise<MailRow[]> {
+export async function selectMail(db: Database, tenantId: string, where: SQL | undefined, order: SQL[], limit: number): Promise<MailRow[]> {
   const records = await db
     .select(mailColumns)
     .from(etEmails)
