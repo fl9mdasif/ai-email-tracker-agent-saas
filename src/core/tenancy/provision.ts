@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Database } from "@/core/db";
-import { tenantModules, tenants, users } from "@/core/db/schema";
+import { platformSettings, plans, tenantModules, tenants, users } from "@/core/db/schema";
 
 export type SignedInProfile = {
   email: string;
@@ -25,15 +25,19 @@ export async function ensureTenantUser(
   const email = profile.email.trim().toLowerCase();
 
   const existing = await findUser(db, email);
-  if (existing) return existing;
+  if (existing) {
+    await touchLastLogin(db, existing.userId);
+    return existing;
+  }
 
   const tenantId = randomUUID();
   const userId = randomUUID();
   const displayName = profile.name?.trim() || email;
+  const planId = await findDefaultPlanId(db);
 
   try {
     await db.batch([
-      db.insert(tenants).values({ id: tenantId, name: displayName }),
+      db.insert(tenants).values({ id: tenantId, name: displayName, planId }),
       db.insert(users).values({
         id: userId,
         tenantId,
@@ -41,6 +45,7 @@ export async function ensureTenantUser(
         name: profile.name ?? null,
         image: profile.image ?? null,
         role: "owner",
+        lastLoginAt: new Date(),
       }),
       db
         .insert(tenantModules)
@@ -54,6 +59,27 @@ export async function ensureTenantUser(
   }
 
   return { userId, tenantId };
+}
+
+/** Remembers when this person last signed in, for the platform dashboard. A failure here never blocks sign-in. */
+async function touchLastLogin(db: Database, userId: string): Promise<void> {
+  try {
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
+  } catch {
+    // Not worth failing a sign-in over.
+  }
+}
+
+/** The plan new tenants start on: the one the platform settings name, else the plan marked default. */
+export async function findDefaultPlanId(db: Database): Promise<string | null> {
+  const [settings] = await db
+    .select({ defaultPlanId: platformSettings.defaultPlanId })
+    .from(platformSettings)
+    .where(eq(platformSettings.id, "platform"))
+    .limit(1);
+  if (settings?.defaultPlanId) return settings.defaultPlanId;
+  const [plan] = await db.select({ id: plans.id }).from(plans).where(and(eq(plans.isDefault, true), eq(plans.active, true))).limit(1);
+  return plan?.id ?? null;
 }
 
 async function findUser(db: Database, email: string): Promise<TenantUser | null> {
