@@ -67,6 +67,25 @@ export async function getAccessToken(refreshToken: string, fetchFn: FetchLike = 
   return reply.access_token;
 }
 
+/**
+ * Tells Google to cancel a saved refresh token, so removing an account in Loopify also ends the
+ * access on Google's side. Best effort: it never throws, because the local delete must go ahead
+ * even when Google cannot be reached.
+ */
+export async function revokeRefreshToken(refreshToken: string, fetchFn: FetchLike = fetch): Promise<boolean> {
+  try {
+    const response = await fetchFn("https://oauth2.googleapis.com/revoke", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: refreshToken }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Trades the one-time code from the consent screen for tokens. */
 export async function exchangeCode(code: string, fetchFn: FetchLike = fetch): Promise<{ accessToken: string; refreshToken: string }> {
   const reply = await postToken(

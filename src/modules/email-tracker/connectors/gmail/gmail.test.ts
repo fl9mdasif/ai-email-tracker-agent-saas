@@ -3,7 +3,7 @@ import { GMAIL_MESSAGES, GmailError, mapGmailError } from "./errors";
 import { type FetchGmailEmails, fetchGmailEmails } from "./fetch-messages";
 import { type GmailMessageLike, htmlToText, normalizeGmailMessage, parseAddress } from "./normalize";
 import { GMAIL_FIRST_SYNC_LIMIT, GMAIL_MAX_PER_RUN, nextGmailCursor, pickIdsToRead, planGmailList, readGmailCursor } from "./plan-fetch";
-import { exchangeCode, getAccessToken } from "./tokens";
+import { exchangeCode, getAccessToken, revokeRefreshToken } from "./tokens";
 
 const b64 = (text: string) => Buffer.from(text, "utf-8").toString("base64url");
 const now = new Date("2026-11-03T10:00:00Z");
@@ -141,6 +141,22 @@ describe("tokens", () => {
     expect(await exchangeCode("code", good as unknown as typeof fetch)).toEqual({ accessToken: "at", refreshToken: "rt" });
     const noRefresh = vi.fn(async () => reply(200, { access_token: "at" }));
     await expect(exchangeCode("code", noRefresh as unknown as typeof fetch)).rejects.toBeInstanceOf(GmailError);
+  });
+
+  it("revokes a token without ever throwing, even when Google cannot be reached", async () => {
+    const calls: string[] = [];
+    const ok = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push(`${String(input)} ${String(init?.body)}`);
+      return reply(200, {});
+    });
+    expect(await revokeRefreshToken("rt-1", ok as unknown as typeof fetch)).toBe(true);
+    expect(calls[0]).toBe("https://oauth2.googleapis.com/revoke token=rt-1");
+
+    expect(await revokeRefreshToken("rt-1", (async () => reply(400, {})) as unknown as typeof fetch)).toBe(false);
+    const broken = (async () => {
+      throw new Error("network down");
+    }) as unknown as typeof fetch;
+    expect(await revokeRefreshToken("rt-1", broken)).toBe(false);
   });
 
   it("never puts Google's own error text into a message", () => {
