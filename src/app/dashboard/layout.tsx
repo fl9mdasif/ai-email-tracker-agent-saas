@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { auth } from "@/core/auth";
-import { getSuperAdminEmail } from "@/core/auth/super-admin";
 import { getDb } from "@/core/db";
 import { requireModule } from "@/core/modules/guard";
+import { getPlatformActor } from "@/core/platform/require-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTodayOverview } from "@/modules/email-tracker/queries/dashboard";
 
@@ -36,11 +36,11 @@ async function menuBadges(): Promise<Record<string, number>> {
   }
 }
 
-/** The shell needs to know up front whether to show the super-admin link and the menu counts. */
+/** The shell needs to know up front whether to show the Platform link (any staff role) and the menu counts. */
 async function ShellWithAccountInfo({ children }: { children: React.ReactNode }) {
-  const [adminEmail, badges] = await Promise.all([getSuperAdminEmail(), menuBadges()]);
+  const [actor, badges] = await Promise.all([getPlatformActor().catch(() => null), menuBadges()]);
   return (
-    <AppShell showAdmin={adminEmail !== null} badges={badges}>
+    <AppShell showAdmin={actor !== null} badges={badges}>
       {children}
     </AppShell>
   );

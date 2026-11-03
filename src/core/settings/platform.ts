@@ -29,7 +29,7 @@ export async function getScanIntervalMinutes(db: Database): Promise<number> {
   return row?.minutes ?? DEFAULT_SCAN_INTERVAL_MINUTES;
 }
 
-/** Saves the interval. Callers must have passed the super-admin check first. */
+/** Saves the interval. Callers must have checked the settings permission first. */
 export async function setScanIntervalMinutes(db: Database, minutes: number, updatedBy: string): Promise<void> {
   await db
     .insert(platformSettings)
