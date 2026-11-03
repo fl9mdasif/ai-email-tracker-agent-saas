@@ -24,7 +24,7 @@ export type ProviderBrand = {
 };
 
 export const PROVIDER_BRANDS: Record<BrandKey, ProviderBrand> = {
-  gmail: { key: "gmail", name: "Gmail", color: "#EA4335", logo: "/providers/gmail.svg", availability: "soon", availableWith: "Milestone 7" },
+  gmail: { key: "gmail", name: "Gmail", color: "#EA4335", logo: "/providers/gmail.svg", availability: "now", availableWith: "Milestone 7" },
   outlook: { key: "outlook", name: "Outlook", color: "#0078D4", logo: "/providers/outlook.svg", availability: "soon", availableWith: "Milestone 7" },
   zoho: { key: "zoho", name: "Zoho Mail", color: "#E42527", logo: "/providers/zoho.svg", availability: "now", availableWith: "Milestone 2" },
   hostinger: { key: "hostinger", name: "Hostinger", color: "#673DE6", logo: "/providers/hostinger.svg", availability: "now", availableWith: "Milestone 2" },

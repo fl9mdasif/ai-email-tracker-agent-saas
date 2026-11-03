@@ -141,6 +141,19 @@ Automatic or scheduled sending without a user click, bulk sending, billing and s
 
 The client can sign in, connect his accounts, see today's emails grouped by priority, see who needs a follow-up, ask the chat what to do today, and install the app on his phone.
 
+## Dashboard (Milestone 5)
+
+- **Today**: numbers (new today, needs reply, priority 1, leads replied, follow-ups due), today's mail grouped by AI priority, a get-started checklist for new workspaces, and an alert when an account stopped syncing.
+- **Needs reply**: mail the AI says needs a reply and the user has not marked handled. **Mark handled** has an Undo.
+- **Follow-ups**: overdue, due today, upcoming. The AI adds mail it marks "follow-up needed" (one per email); the user adds reminders with **Remind me** (tomorrow, 3 days, 1 week, or a date).
+- **Mail**: all synced mail with search and filters (account, category, priority, handled, unread), the mailbox shown on every mail, and paging. **Email detail** shows the plain-text body (never rendered as HTML), the AI result, **Open in Gmail**, and **Analyze this email** for older mail the automatic scan skipped.
+- **Settings**: time zone, AI usage (today and 30 days), **Export my data** (JSON, never passwords or tokens) and **Delete my workspace** (type the name; Gmail access is cancelled with Google).
+- Mobile first: menu with counts, bottom bar on phones.
+
+## Gmail connection (built early, in Milestone 7)
+
+"Connect Gmail" is a separate consent from sign-in, with the read-only scope `gmail.readonly`. Only an encrypted refresh token is stored (provider `gmail`, auth type `oauth`); each sync exchanges it for a short-lived access token and reads the INBOX without changing anything. Several Gmail accounts per tenant are allowed. In Google's testing mode the token expires about every 7 days, so a Gmail card in error shows a Reconnect button.
+
 ## Planned for version two (not part of version one)
 
 Nothing here is built or scheduled. Version one is finished at the definition of done above.

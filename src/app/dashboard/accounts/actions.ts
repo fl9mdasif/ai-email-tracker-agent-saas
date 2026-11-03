@@ -10,6 +10,8 @@ import { AccountExistsError, deleteAccount, getAccount, saveCredentials } from "
 import { SYNC_ACCOUNT_EVENT } from "@/modules/email-tracker/jobs/events";
 import { brandForPreset } from "@/modules/email-tracker/providers/brands";
 import { registerEmailTrackerConnectors } from "@/modules/email-tracker/connectors";
+import { GMAIL_PROVIDER } from "@/modules/email-tracker/connectors/gmail";
+import { revokeGmailAccess } from "@/modules/email-tracker/connectors/gmail/revoke";
 import { IMAP_PROVIDER } from "@/modules/email-tracker/connectors/imap";
 import { IMAP_PRESETS } from "@/modules/email-tracker/connectors/imap/presets";
 import {
@@ -122,6 +124,10 @@ export async function syncAccountNowAction(accountId: string): Promise<{ ok: boo
 export async function disconnectAccountAction(accountId: string): Promise<void> {
   const session = await requireModule(MODULE_KEY);
   if (!/^[0-9a-f-]{36}$/i.test(accountId)) return;
-  await deleteAccount(getDb(), session.tenantId, accountId);
+  const db = getDb();
+  const account = await getAccount(db, session.tenantId, accountId);
+  // End the access on Google's side too, so a removed Gmail account cannot be read any more.
+  if (account?.provider === GMAIL_PROVIDER) await revokeGmailAccess(db, session.tenantId, accountId);
+  await deleteAccount(db, session.tenantId, accountId);
   revalidatePath("/dashboard/accounts");
 }

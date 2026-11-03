@@ -1,0 +1,1 @@
+ALTER TABLE "et_sync_state" ADD COLUMN "cursor" jsonb;

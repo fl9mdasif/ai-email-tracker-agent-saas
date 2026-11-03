@@ -3,6 +3,7 @@ import type { Database } from "@/core/db";
 import { connectedAccounts } from "@/core/db/schema";
 import type { ModelFailureReason } from "@/core/llm/gateway";
 import { etEmailAnalysis, etEmails } from "../db/schema";
+import { recordAiFollowUp } from "../queries/mutations";
 import { getTodayWindow, isScanPaused } from "../scan/scan-state";
 import { type AnalyzeEmailResult, analyzeEmail } from "./analyze-email";
 import type { PromptEmail } from "./prompts";
@@ -120,6 +121,10 @@ export async function analyzePendingEmails(
         model: result.model,
         error: null,
       });
+      // A mail the AI says needs a follow-up also shows up on the Follow-ups page.
+      if (result.analysis.category === "follow_up_needed") {
+        await recordAiFollowUp(db, tenantId, row.id, result.analysis.suggested_action);
+      }
       outcome.analyzed += 1;
     } else {
       await storeResult(db, tenantId, row.id, {
@@ -159,4 +164,58 @@ async function storeResult(db: Database, tenantId: string, emailId: string, resu
       set: { ...result, attempts: sql`${etEmailAnalysis.attempts} + 1`, updatedAt: new Date() },
       setWhere: eq(etEmailAnalysis.tenantId, tenantId),
     });
+}
+
+export type AnalyzeOneOutcome = { ok: true } | { ok: false; message: string };
+
+/**
+ * Analyzes one inbound email of this tenant on request, whatever its date (this is how older mail,
+ * which the automatic scan skips, gets an AI result). Same storage and follow-up rules as the
+ * scan. Only this tenant's mail is read.
+ */
+export async function analyzeSingleEmail(
+  db: Database,
+  tenantId: string,
+  emailId: string,
+  deps: Pick<AnalyzeDeps, "analyze"> = defaultDeps,
+): Promise<AnalyzeOneOutcome> {
+  if (!/^[0-9a-f-]{36}$/i.test(emailId)) return { ok: false, message: "Email not found." };
+
+  const [row] = await db
+    .select({
+      id: etEmails.id,
+      fromAddress: etEmails.fromAddress,
+      fromName: etEmails.fromName,
+      to: etEmails.toAddresses,
+      subject: etEmails.subject,
+      bodyText: etEmails.bodyText,
+      receivedAt: etEmails.receivedAt,
+      mailboxOwner: connectedAccounts.identity,
+    })
+    .from(etEmails)
+    .innerJoin(connectedAccounts, and(eq(connectedAccounts.id, etEmails.accountId), eq(connectedAccounts.tenantId, tenantId)))
+    .where(and(eq(etEmails.id, emailId), eq(etEmails.tenantId, tenantId), eq(etEmails.direction, "inbound")))
+    .limit(1);
+  if (!row) return { ok: false, message: "Email not found." };
+
+  const result = await deps.analyze(
+    { fromAddress: row.fromAddress, fromName: row.fromName, to: row.to, subject: row.subject, bodyText: row.bodyText, receivedAt: row.receivedAt },
+    { tenantId, mailboxOwner: row.mailboxOwner },
+  );
+  if (!result.ok) return { ok: false, message: result.message };
+
+  await storeResult(db, tenantId, row.id, {
+    status: "analyzed",
+    category: result.analysis.category,
+    priority: result.analysis.priority,
+    needsReply: result.analysis.needs_reply,
+    summary: result.analysis.summary,
+    suggestedAction: result.analysis.suggested_action,
+    model: result.model,
+    error: null,
+  });
+  if (result.analysis.category === "follow_up_needed") {
+    await recordAiFollowUp(db, tenantId, row.id, result.analysis.suggested_action);
+  }
+  return { ok: true };
 }

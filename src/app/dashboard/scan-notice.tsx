@@ -1,33 +1,16 @@
-import { AlertTriangle, CheckCircle2, Clock, Inbox, Loader2, PauseCircle, Square } from "lucide-react";
-import Link from "next/link";
+import { AlertTriangle, CheckCircle2, Clock, Loader2, PauseCircle, Square } from "lucide-react";
 import { auth } from "@/core/auth";
 import { getDb } from "@/core/db";
 import { formatInterval, getScanIntervalMinutes } from "@/core/settings/platform";
-import { CATEGORY_LABELS, PRIORITY_LABELS } from "@/modules/email-tracker/ai/labels";
-import { getAnalysisSummary, type AnalysisSummary } from "@/modules/email-tracker/queries/analysis";
-import { listLatestEmails } from "@/modules/email-tracker/queries/emails";
-import { getScanStatus, type ScanStatus } from "@/modules/email-tracker/scan/scan-state";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { type AnalysisSummary, getAnalysisSummary } from "@/modules/email-tracker/queries/analysis";
+import { type ScanStatus, getScanStatus } from "@/modules/email-tracker/scan/scan-state";
 import { AutoRefresh } from "./auto-refresh";
 import { CancelScanButton, ScanNowButton } from "./scan-controls";
 
-const timeFormat = new Intl.DateTimeFormat("en-GB", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "UTC",
-});
-
-type NoticeProps = {
-  summary: AnalysisSummary;
-  scan: ScanStatus;
-  intervalLabel: string;
-};
-
 const noticeBase = "rounded-lg border p-3 text-sm";
 
-function AnalysisNotice({ summary, scan, intervalLabel }: NoticeProps) {
+function Notice({ summary, scan, intervalLabel }: { summary: AnalysisSummary; scan: ScanStatus; intervalLabel: string }) {
   if (summary.problem) {
     return (
       <div role="status" className={cn(noticeBase, "flex items-start gap-2 border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300")}>
@@ -129,82 +112,21 @@ function AnalysisNotice({ summary, scan, intervalLabel }: NoticeProps) {
   );
 }
 
-/** The newest synced mail with what the AI made of each email. The full prioritised dashboard comes in Milestone 5. */
-export async function LatestMail() {
+/** The AI scan status for today's mail: progress with Cancel, paused, waiting, done, or a problem. */
+export async function ScanNotice() {
   const session = await auth();
   if (!session?.tenantId) return null;
   const db = getDb();
-  const [emails, summary, scan, intervalMinutes] = await Promise.all([
-    listLatestEmails(db, session.tenantId, 20),
+  const [summary, scan, intervalMinutes] = await Promise.all([
     getAnalysisSummary(db, session.tenantId),
     getScanStatus(db, session.tenantId),
     getScanIntervalMinutes(db),
   ]);
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="font-display text-lg">Latest mail</CardTitle>
-        <CardDescription>
-          {emails.length === 0 ? "No mail has been synced yet." : "Your 20 newest emails from all connected accounts."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <AutoRefresh active={summary.waiting > 0 && scan.startedRecently && !scan.paused && !summary.problem} />
-        <AnalysisNotice summary={summary} scan={scan} intervalLabel={formatInterval(intervalMinutes)} />
-        {emails.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-10 text-center">
-            <Inbox className="size-8 text-muted-foreground" />
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Connect a mailbox and run a sync to see your mail here.
-            </p>
-            <Link href="/dashboard/accounts" className={cn(buttonVariants({ size: "lg" }))}>
-              Go to Accounts
-            </Link>
-          </div>
-        ) : (
-          <ul className="divide-y">
-            {emails.map((email) => {
-              const category = email.analysis ? CATEGORY_LABELS[email.analysis.category] : null;
-              const priority = email.analysis ? PRIORITY_LABELS[email.analysis.priority] : null;
-              return (
-                <li key={email.id} className="grid gap-1 py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className={cn("truncate text-sm", email.status === "unread" && "font-semibold")}>
-                      {email.fromName ?? email.fromAddress}
-                    </p>
-                    <p className="shrink-0 text-xs text-muted-foreground">{timeFormat.format(email.receivedAt)} UTC</p>
-                  </div>
-                  <p className={cn("truncate text-sm", email.status === "unread" ? "font-medium" : "")}>
-                    {email.subject || "(no subject)"}
-                  </p>
-                  {email.analysis && category ? (
-                    <div className="grid gap-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", category.chip)}>
-                          {category.label}
-                        </span>
-                        {priority && (
-                          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", priority.chip)}>
-                            {priority.label}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{email.analysis.summary}</p>
-                      <p className="text-sm">
-                        <span className="font-medium">Next: </span>
-                        {email.analysis.suggestedAction}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="truncate text-sm text-muted-foreground">{email.snippet}</p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <>
+      <AutoRefresh active={summary.waiting > 0 && scan.startedRecently && !scan.paused && !summary.problem} />
+      <Notice summary={summary} scan={scan} intervalLabel={formatInterval(intervalMinutes)} />
+    </>
   );
 }

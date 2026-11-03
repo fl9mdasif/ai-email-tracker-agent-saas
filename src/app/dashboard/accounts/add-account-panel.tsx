@@ -62,15 +62,25 @@ export function AddAccountPanel({ presets }: { presets: PresetOption[] }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          aria-expanded={false}
-          onClick={() => setOpen(true)}
-          className="btn-gradient inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-7 text-base font-semibold text-white transition-transform hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:w-auto"
-        >
-          <Plus className="size-5" />
-          Add a new account
-        </button>
+        <div className="grid gap-3">
+          <button
+            type="button"
+            aria-expanded={false}
+            onClick={() => setOpen(true)}
+            className="btn-gradient inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-7 text-base font-semibold text-white transition-transform hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:w-auto"
+          >
+            <Plus className="size-5" />
+            Add a Hostinger or Zoho account
+          </button>
+          {/* A plain link, not next/link: it must not be prefetched, it starts a sign-in with Google. */}
+          <a
+            href="/api/connect/google/start"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border bg-card px-7 text-base font-semibold shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:w-auto"
+          >
+            <ProviderLogo brand="gmail" size={24} />
+            Connect Gmail
+          </a>
+        </div>
       </CardContent>
     </Card>
   );

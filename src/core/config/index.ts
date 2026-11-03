@@ -64,6 +64,12 @@ export function getConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   return result.data;
 }
 
+/** The public base URL of the app (no trailing slash), used to build OAuth redirect addresses. */
+export function getAppUrl(source?: NodeJS.ProcessEnv): string {
+  const config = getConfig(source);
+  return (config.NEXT_PUBLIC_APP_URL ?? config.NEXTAUTH_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+}
+
 /** Returns a required value or throws naming the missing key (never the value). */
 export function requireConfig<K extends ConfigKey>(
   key: K,
