@@ -28,16 +28,15 @@ async function ChatView() {
 
 export default function ChatPage() {
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-4">
-      <header className="grid gap-1">
-        <h1 className="font-display text-2xl font-semibold">Chat</h1>
-        <p className="text-sm text-muted-foreground">
-          Ask what needs your attention. Answers come from your sorted mail (never the whole mailbox) and are saved here until you clear them.
-        </p>
-      </header>
-      <Suspense fallback={<Skeleton className="h-72 w-full rounded-xl" />}>
-        <ChatView />
-      </Suspense>
+    // Pinned to the screen: between the phone header (h-14) and bottom bar (h-16), or beside the
+    // 240px sidebar on larger screens. The window never scrolls here; only the conversation does,
+    // so the text box is always visible at the bottom.
+    <div className="fixed inset-x-0 top-14 bottom-16 z-10 flex flex-col bg-background p-3 md:inset-y-0 md:right-0 md:left-60 md:p-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
+        <Suspense fallback={<Skeleton className="min-h-0 w-full flex-1 rounded-2xl" />}>
+          <ChatView />
+        </Suspense>
+      </div>
     </div>
   );
 }

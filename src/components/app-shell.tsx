@@ -70,7 +70,8 @@ function BottomNav({ items, badges, pathname }: NavProps & { pathname: string })
   }, [open]);
 
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-background py-1.5 md:hidden">
+    // Exactly h-16, matching the pb-16 the content keeps free (the chat page sits right above it).
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t bg-background md:hidden">
       {primary.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         const count = badges[href] ?? 0;
@@ -162,7 +163,8 @@ export function AppShell({
       </aside>
 
       <div className="flex min-h-screen flex-col pb-16 md:pb-0">
-        <header className="flex items-center justify-between border-b px-4 py-3 md:hidden">
+        {/* Exactly h-14: the chat page starts right below it on phones. */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b px-4 md:hidden">
           <Link href="/dashboard" aria-label="Loopify dashboard">
             <Logo markClassName="size-7" className="gap-2" />
           </Link>
