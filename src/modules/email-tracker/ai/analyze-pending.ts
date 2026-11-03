@@ -2,7 +2,8 @@ import { and, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import type { Database } from "@/core/db";
 import { connectedAccounts } from "@/core/db/schema";
 import type { ModelFailureReason } from "@/core/llm/gateway";
-import { etEmailAnalysis, etEmails } from "../db/schema";
+import { type LeadTemperature, etEmailAnalysis, etEmails } from "../db/schema";
+import { upsertLeadFromAnalysis } from "../queries/leads";
 import { recordAiFollowUp } from "../queries/mutations";
 import { getTodayWindow, isScanPaused } from "../scan/scan-state";
 import { type AnalyzeEmailResult, analyzeEmail } from "./analyze-email";
@@ -111,20 +112,7 @@ export async function analyzePendingEmails(
     }
 
     if (result.ok) {
-      await storeResult(db, tenantId, row.id, {
-        status: "analyzed",
-        category: result.analysis.category,
-        priority: result.analysis.priority,
-        needsReply: result.analysis.needs_reply,
-        summary: result.analysis.summary,
-        suggestedAction: result.analysis.suggested_action,
-        model: result.model,
-        error: null,
-      });
-      // A mail the AI says needs a follow-up also shows up on the Follow-ups page.
-      if (result.analysis.category === "follow_up_needed") {
-        await recordAiFollowUp(db, tenantId, row.id, result.analysis.suggested_action);
-      }
+      await saveAnalysis(db, tenantId, row.id, result);
       outcome.analyzed += 1;
     } else {
       await storeResult(db, tenantId, row.id, {
@@ -135,6 +123,8 @@ export async function analyzePendingEmails(
         summary: null,
         suggestedAction: null,
         model: null,
+        leadTemperature: null,
+        leadReason: null,
         error: result.message,
       });
       outcome.failed += 1;
@@ -152,8 +142,37 @@ type StoredResult = {
   summary: string | null;
   suggestedAction: string | null;
   model: string | null;
+  leadTemperature: LeadTemperature | null;
+  leadReason: string | null;
   error: string | null;
 };
+
+/**
+ * Stores a successful analysis and what follows from it: a "follow-up needed" mail shows up on
+ * the Follow-ups page, and a prospect's mail updates their lead.
+ */
+async function saveAnalysis(db: Database, tenantId: string, emailId: string, result: Extract<AnalyzeEmailResult, { ok: true }>): Promise<void> {
+  const { analysis } = result;
+  const leadTemperature = analysis.lead_temperature === "none" ? null : analysis.lead_temperature;
+  await storeResult(db, tenantId, emailId, {
+    status: "analyzed",
+    category: analysis.category,
+    priority: analysis.priority,
+    needsReply: analysis.needs_reply,
+    summary: analysis.summary,
+    suggestedAction: analysis.suggested_action,
+    model: result.model,
+    leadTemperature,
+    leadReason: leadTemperature ? analysis.lead_reason : null,
+    error: null,
+  });
+  if (analysis.category === "follow_up_needed") {
+    await recordAiFollowUp(db, tenantId, emailId, analysis.suggested_action);
+  }
+  if (leadTemperature) {
+    await upsertLeadFromAnalysis(db, tenantId, emailId, leadTemperature, analysis.lead_reason);
+  }
+}
 
 async function storeResult(db: Database, tenantId: string, emailId: string, result: StoredResult): Promise<void> {
   await db
@@ -164,6 +183,73 @@ async function storeResult(db: Database, tenantId: string, emailId: string, resu
       set: { ...result, attempts: sql`${etEmailAnalysis.attempts} + 1`, updatedAt: new Date() },
       setWhere: eq(etEmailAnalysis.tenantId, tenantId),
     });
+}
+
+/** Most lead replies scored by one press of "Score older leads". */
+export const SCORE_OLDER_LIMIT = 50;
+const SCORE_OLDER_DAYS = 30;
+
+export type ScoreOlderOutcome = { scored: number; failed: number; stoppedBecause: "not_configured" | "quota_exhausted" | "auth_failed" | null };
+
+/**
+ * Scores lead replies from the last 30 days that were analysed before lead scoring existed.
+ * Each one is analysed again (one AI call each, at most 50 per press), which stores its
+ * temperature and updates the lead. Only this tenant's inbound mail is read.
+ */
+export async function scoreOlderLeads(
+  db: Database,
+  tenantId: string,
+  deps: Pick<AnalyzeDeps, "analyze"> = defaultDeps,
+  now = new Date(),
+  limit = SCORE_OLDER_LIMIT,
+): Promise<ScoreOlderOutcome> {
+  const since = new Date(now.getTime() - SCORE_OLDER_DAYS * 86_400_000);
+  const rows = await db
+    .select({
+      id: etEmails.id,
+      fromAddress: etEmails.fromAddress,
+      fromName: etEmails.fromName,
+      to: etEmails.toAddresses,
+      subject: etEmails.subject,
+      bodyText: etEmails.bodyText,
+      receivedAt: etEmails.receivedAt,
+      mailboxOwner: connectedAccounts.identity,
+    })
+    .from(etEmails)
+    .innerJoin(connectedAccounts, and(eq(connectedAccounts.id, etEmails.accountId), eq(connectedAccounts.tenantId, tenantId)))
+    .innerJoin(etEmailAnalysis, and(eq(etEmailAnalysis.emailId, etEmails.id), eq(etEmailAnalysis.tenantId, tenantId)))
+    .where(
+      and(
+        eq(etEmails.tenantId, tenantId),
+        eq(etEmails.direction, "inbound"),
+        gte(etEmails.receivedAt, since),
+        eq(etEmailAnalysis.status, "analyzed"),
+        eq(etEmailAnalysis.category, "lead_reply"),
+        isNull(etEmailAnalysis.leadTemperature),
+      ),
+    )
+    .orderBy(desc(etEmails.receivedAt))
+    .limit(limit);
+
+  const outcome: ScoreOlderOutcome = { scored: 0, failed: 0, stoppedBecause: null };
+  for (const row of rows) {
+    const result = await deps.analyze(
+      { fromAddress: row.fromAddress, fromName: row.fromName, to: row.to, subject: row.subject, bodyText: row.bodyText, receivedAt: row.receivedAt },
+      { tenantId, mailboxOwner: row.mailboxOwner },
+    );
+    if (!result.ok) {
+      if (PAUSING_REASONS.has(result.reason)) {
+        outcome.stoppedBecause = result.reason as NonNullable<ScoreOlderOutcome["stoppedBecause"]>;
+        break;
+      }
+      // The earlier result stays as it was; this email is simply not scored this time.
+      outcome.failed += 1;
+      continue;
+    }
+    await saveAnalysis(db, tenantId, row.id, result);
+    outcome.scored += 1;
+  }
+  return outcome;
 }
 
 export type AnalyzeOneOutcome = { ok: true } | { ok: false; message: string };
@@ -204,18 +290,6 @@ export async function analyzeSingleEmail(
   );
   if (!result.ok) return { ok: false, message: result.message };
 
-  await storeResult(db, tenantId, row.id, {
-    status: "analyzed",
-    category: result.analysis.category,
-    priority: result.analysis.priority,
-    needsReply: result.analysis.needs_reply,
-    summary: result.analysis.summary,
-    suggestedAction: result.analysis.suggested_action,
-    model: result.model,
-    error: null,
-  });
-  if (result.analysis.category === "follow_up_needed") {
-    await recordAiFollowUp(db, tenantId, row.id, result.analysis.suggested_action);
-  }
+  await saveAnalysis(db, tenantId, row.id, result);
   return { ok: true };
 }

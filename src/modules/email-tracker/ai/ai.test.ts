@@ -17,11 +17,13 @@ import {
 } from "./schema";
 
 const valid = {
-  category: "lead_reply",
+  category: "lead_reply" as const,
   priority: 1,
   needs_reply: true,
   summary: "Maria asks for a price for 20 seats.",
   suggested_action: "Reply with the price list and offer a call.",
+  lead_temperature: "hot" as const,
+  lead_reason: "Asked for a price for 20 seats.",
 };
 
 const email: PromptEmail = {
@@ -84,6 +86,23 @@ describe("normalizeAnalysis", () => {
         priority: 3,
       });
     }
+  });
+
+  it("keeps a prospect's temperature and reason", () => {
+    expect(normalizeAnalysis(valid)).toMatchObject({ lead_temperature: "hot", lead_reason: "Asked for a price for 20 seats." });
+  });
+
+  it("never scores spam, promotions or bills as a lead, nor a lead without a reason", () => {
+    for (const category of ["spam", "newsletter_or_promo", "invoice_or_payment"] as const) {
+      expect(normalizeAnalysis({ ...valid, category })).toMatchObject({ lead_temperature: "none", lead_reason: "" });
+    }
+    expect(normalizeAnalysis({ ...valid, lead_reason: "" }).lead_temperature).toBe("none");
+    expect(normalizeAnalysis({ ...valid, lead_temperature: "none" }).lead_reason).toBe("");
+  });
+
+  it("accepts an older reply without lead fields as no lead", () => {
+    const older = { category: valid.category, priority: valid.priority, needs_reply: valid.needs_reply, summary: valid.summary, suggested_action: valid.suggested_action };
+    expect(emailAnalysisSchema.parse(older)).toMatchObject({ lead_temperature: "none", lead_reason: "" });
   });
 
   it("always expects a reply for needs_reply", () => {

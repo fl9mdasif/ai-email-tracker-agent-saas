@@ -38,7 +38,7 @@ describe.skipIf(!configured)("dashboard queries (Neon)", () => {
   const analysis = (category: AnalyzeEmailResult extends infer R ? (R extends { ok: true; analysis: infer A } ? (A extends { category: infer C } ? C : never) : never) : never, priority: 1 | 2 | 3, needsReply: boolean): AnalyzeEmailResult => ({
     ok: true,
     model: "test-model",
-    analysis: { category, priority, needs_reply: needsReply, summary: `summary ${category}`, suggested_action: `action ${category}` },
+    analysis: { category, priority, needs_reply: needsReply, summary: `summary ${category}`, suggested_action: `action ${category}`, lead_temperature: "none", lead_reason: "" },
   });
 
   beforeAll(async () => {

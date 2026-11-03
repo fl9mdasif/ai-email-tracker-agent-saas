@@ -25,6 +25,8 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
       needs_reply: true,
       summary: "A lead asks for the price.",
       suggested_action: "Reply with the price list.",
+      lead_temperature: "hot",
+      lead_reason: "Asked for the price.",
     },
   };
 
@@ -107,7 +109,12 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
       model: "test-model",
       attempts: 1,
       error: null,
+      leadTemperature: "hot",
+      leadReason: "Asked for the price.",
     });
+    // The prospect's mail made one lead for the sender, pointing at their newest email.
+    const leads = await db.select().from(et.etLeads).where(eq(et.etLeads.tenantId, tenantA));
+    expect(leads).toEqual([expect.objectContaining({ contactEmail: "maria@client.com", temperature: "hot", reason: "Asked for the price." })]);
   }, 90_000);
 
   it("never analyzes the same email twice", async () => {
@@ -253,4 +260,29 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
     expect(outcome.analyzed).toBe(2);
     expect(d.analyze).toHaveBeenCalledTimes(2);
   }, 90_000);
+
+  it("Score older leads re-scores unscored lead replies once, and stops without harm when the AI is out of credits", async () => {
+    // Make every analysed row look like it came from before lead scoring existed.
+    await db
+      .update(et.etEmailAnalysis)
+      .set({ status: "analyzed", category: "lead_reply", leadTemperature: null, leadReason: null })
+      .where(eq(et.etEmailAnalysis.tenantId, tenantA));
+    const unscored = (await analysisRows(tenantA)).length;
+    expect(unscored).toBeGreaterThan(0);
+
+    const broke = deps({ ok: false, reason: "quota_exhausted", message: "No credits." });
+    expect(await pending.scoreOlderLeads(db, tenantA, broke)).toEqual({ scored: 0, failed: 0, stoppedBecause: "quota_exhausted" });
+    expect(broke.analyze).toHaveBeenCalledTimes(1);
+
+    // Another tenant's press scores nothing of tenant A's.
+    const other = deps(good);
+    expect(await pending.scoreOlderLeads(db, tenantB, other)).toEqual({ scored: 0, failed: 0, stoppedBecause: null });
+    expect(other.analyze).not.toHaveBeenCalled();
+
+    const d = deps(good);
+    expect(await pending.scoreOlderLeads(db, tenantA, d)).toEqual({ scored: unscored, failed: 0, stoppedBecause: null });
+    expect((await analysisRows(tenantA)).every((row) => row.leadTemperature === "hot")).toBe(true);
+    // A second press finds nothing left to score.
+    expect((await pending.scoreOlderLeads(db, tenantA, deps(good))).scored).toBe(0);
+  }, 120_000);
 });
