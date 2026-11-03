@@ -10,6 +10,7 @@ export type AdminSection = { href: string; label: string; icon: AdminIcon; permi
  */
 export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/admin", label: "Overview", icon: "overview", permission: "overview.view" },
+  { href: "/admin/plans", label: "Plans and pricing", icon: "plans", permission: "plans.view" },
   { href: "/admin/settings", label: "Settings", icon: "settings", permission: "settings.manage" },
 ];
 
