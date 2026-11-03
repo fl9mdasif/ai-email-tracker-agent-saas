@@ -5,7 +5,8 @@ import { getDb } from "@/core/db";
 import { type Permission, type StaffRole, can } from "./permissions";
 import { getStaffRole } from "./staff";
 
-export type PlatformActor = { email: string; role: StaffRole; locked: boolean };
+/** `tenantId` is the actor's own workspace, so a staff member cannot act on themselves by mistake (for example delete their own). */
+export type PlatformActor = { email: string; role: StaffRole; locked: boolean; tenantId: string };
 
 /** The signed-in person as platform staff, or null when they are not staff (or not signed in). */
 export async function getPlatformActor(): Promise<PlatformActor | null> {
@@ -13,7 +14,7 @@ export async function getPlatformActor(): Promise<PlatformActor | null> {
   const email = session?.user?.email?.trim().toLowerCase();
   if (!session?.tenantId || !email) return null;
   const found = await getStaffRole(getDb(), email, getConfig().SUPER_ADMIN_EMAILS);
-  return found ? { email, role: found.role, locked: found.locked } : null;
+  return found ? { email, role: found.role, locked: found.locked, tenantId: session.tenantId } : null;
 }
 
 /**

@@ -35,6 +35,11 @@ export async function pauseScan(db: Database, tenantId: string): Promise<void> {
     .onConflictDoUpdate({ target: etScanState.tenantId, set: { paused: true, updatedAt: new Date() } });
 }
 
+/** Lets automatic scans run again for a tenant whose user pressed Cancel, without starting one. Used by platform staff. */
+export async function clearPause(db: Database, tenantId: string): Promise<void> {
+  await db.update(etScanState).set({ paused: false, updatedAt: new Date() }).where(eq(etScanState.tenantId, tenantId));
+}
+
 /** Clears the pause and records that a scan starts now. Used by "Scan now" and by the scheduler. */
 export async function markScanStarted(db: Database, tenantId: string, now: Date = new Date()): Promise<void> {
   await db
