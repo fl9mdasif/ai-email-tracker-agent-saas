@@ -27,7 +27,7 @@ describe("provider brands", () => {
       .filter((brand) => brand.availability === "now")
       .map((brand) => brand.key)
       .sort();
-    expect(now).toEqual(["hostinger", "zoho"]);
+    expect(now).toEqual(["gmail", "hostinger", "zoho"]);
   });
 
   it("maps every IMAP preset to an available brand", () => {

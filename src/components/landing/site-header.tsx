@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { signOutAction } from "@/app/sign-out-action";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
@@ -28,7 +29,7 @@ const isScrolledOnServer = () => false;
  * because the hero behind it is always dark. Once the page scrolls it becomes a light,
  * blurred bar that follows the site theme.
  */
-export function SiteHeader() {
+export function SiteHeader({ signedIn = false }: { signedIn?: boolean }) {
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, isScrolledOnServer);
 
   return (
@@ -63,9 +64,28 @@ export function SiteHeader() {
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle className={cn(!scrolled && "text-white hover:bg-white/10 hover:text-white")} />
-          <Link href="/login" className={cn(buttonVariants({ size: "lg" }))}>
-            Sign in
-          </Link>
+          {signedIn ? (
+            <>
+              <Link
+                href="/dashboard"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "lg" }),
+                  !scrolled && "text-white hover:bg-white/10 hover:text-white",
+                )}
+              >
+                Dashboard
+              </Link>
+              <form action={signOutAction}>
+                <button type="submit" className={cn(buttonVariants({ size: "lg" }))}>
+                  Log out
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link href="/login" className={cn(buttonVariants({ size: "lg" }))}>
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>

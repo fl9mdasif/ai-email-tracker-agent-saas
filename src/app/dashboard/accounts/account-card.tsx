@@ -104,7 +104,18 @@ export function AccountCard({
       </dl>
 
       {!active && account.statusMessage ? (
-        <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-destructive">{account.statusMessage}</p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-destructive">
+          <p>{account.statusMessage}</p>
+          {account.brand === "gmail" ? (
+            // A plain link: it starts a sign-in with Google and must not be prefetched.
+            <a
+              href={`/api/connect/google/start?hint=${encodeURIComponent(account.identity)}`}
+              className="inline-flex h-8 shrink-0 items-center rounded-lg border border-destructive/40 bg-card px-3 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              Reconnect
+            </a>
+          ) : null}
+        </div>
       ) : null}
     </li>
   );

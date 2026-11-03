@@ -84,6 +84,8 @@ export const etSyncState = pgTable("et_sync_state", {
   /** IMAP UIDVALIDITY as text (it can exceed a 32-bit integer). */
   uidValidity: text("uid_validity").notNull(),
   lastUid: integer("last_uid").notNull().default(0),
+  /** Where a provider other than IMAP stopped, e.g. Gmail's { lastInternalDateMs }. Null for IMAP. */
+  cursor: jsonb("cursor").$type<Record<string, unknown>>(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -141,6 +141,10 @@ Automatic or scheduled sending without a user click, bulk sending, billing and s
 
 The client can sign in, connect his accounts, see today's emails grouped by priority, see who needs a follow-up, ask the chat what to do today, and install the app on his phone.
 
+## Gmail connection (built early, in Milestone 7)
+
+"Connect Gmail" is a separate consent from sign-in, with the read-only scope `gmail.readonly`. Only an encrypted refresh token is stored (provider `gmail`, auth type `oauth`); each sync exchanges it for a short-lived access token and reads the INBOX without changing anything. Several Gmail accounts per tenant are allowed. In Google's testing mode the token expires about every 7 days, so a Gmail card in error shows a Reconnect button.
+
 ## Planned for version two (not part of version one)
 
 Nothing here is built or scheduled. Version one is finished at the definition of done above.

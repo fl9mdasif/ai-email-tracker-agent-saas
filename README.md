@@ -12,6 +12,7 @@ The full product spec is in [Product.md](Product.md).
 | 1b | Landing page with a 3D hero | Done |
 | 2 | Credentials vault (AES-256-GCM) and connected accounts | Done |
 | 3 | Mail sync over IMAP (Hostinger, Zoho) in the background | Done |
+| 7 (part) | Connect Gmail (read-only OAuth), several Gmail accounts | Code complete; needs Google Cloud setup and a real-Gmail test |
 | 4 | AI analysis: category, priority, summary, next action (today's mail only, super-admin scan interval) | Code complete; live run verified on Groq |
 | 5+ | Prioritised dashboard, Gmail/Outlook OAuth, follow-ups, outreach tools | Planned |
 
@@ -73,7 +74,9 @@ Rules that hold everywhere:
 
    App: http://localhost:3000. Inngest dashboard: http://localhost:8288.
 
-5. Sign in with Google, open **Accounts**, and connect a Hostinger or Zoho mailbox. Press **Sync now**, then open **Today**.
+5. Sign in with Google, open **Accounts**, and connect a Hostinger or Zoho mailbox, or press **Connect Gmail**. Press **Sync now**, then open **Today**.
+
+   **Connect Gmail** needs one-time setup in Google Cloud (the same project as the login): enable the Gmail API, add the scope `https://www.googleapis.com/auth/gmail.readonly`, add each Gmail as a test user while the app is in testing mode, and add `http://localhost:3000/api/connect/google/callback` (and your production URL) as a redirect URI. It reuses `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Access is read-only, only an encrypted refresh token is stored, and in testing mode Google expires it about every 7 days: press **Reconnect** on the account card.
 
 ## Scripts
 
