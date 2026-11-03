@@ -12,7 +12,7 @@ The full product spec is in [Product.md](Product.md).
 | 1b | Landing page with a 3D hero | Done |
 | 2 | Credentials vault (AES-256-GCM) and connected accounts | Done |
 | 3 | Mail sync over IMAP (Hostinger, Zoho) in the background | Done |
-| 4 | AI analysis: category, priority, summary, next action | Code complete; live run needs OpenAI credits |
+| 4 | AI analysis: category, priority, summary, next action (today's mail only, super-admin scan interval) | Code complete; live run verified on Groq |
 | 5+ | Prioritised dashboard, Gmail/Outlook OAuth, follow-ups, outreach tools | Planned |
 
 ## Tech stack
@@ -22,7 +22,7 @@ The full product spec is in [Product.md](Product.md).
 - Neon Postgres with Drizzle ORM
 - Auth.js v5 (Google sign-in)
 - Inngest for background jobs
-- OpenAI, behind a provider-neutral gateway (`src/core/llm`)
+- OpenAI (production) or Groq (free testing), behind a provider-neutral gateway (`src/core/llm`)
 - Vitest for tests
 
 ## How it is organised
@@ -52,7 +52,9 @@ Rules that hold everywhere:
    | `NEXTAUTH_URL`, `NEXTAUTH_SECRET` | Auth.js |
    | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
    | `CREDENTIALS_ENCRYPTION_KEY` | Vault key. Back it up: losing it makes stored credentials unreadable |
-   | `OPENAI_API_KEY`, `LLM_MODEL` | AI analysis (model defaults to `gpt-4.1-mini`) |
+   | `LLM_PROVIDER`, `OPENAI_API_KEY`, `GROQ_API_KEY`, `LLM_MODEL` | AI analysis. `LLM_PROVIDER` is `openai` (default, production) or `groq` (free tier for testing, needs `GROQ_API_KEY`). `LLM_MODEL` is optional and defaults per provider (`gpt-4.1-mini` on OpenAI) |
+
+   | `SUPER_ADMIN_EMAILS` | Comma-separated emails allowed to open the platform dashboard (`/admin`) and set the AI scan interval |
 
    Never commit `.env.local`.
 
@@ -83,14 +85,18 @@ Rules that hold everywhere:
 | `npm run db:generate` / `db:migrate` | Create and apply migrations |
 | `npm run db:studio` | Browse the database |
 | `npm run inngest:dev` | Local Inngest worker |
-| `npm run ai:smoke` | One real OpenAI call to check the key and credits |
+| `npm run ai:smoke` | One real model call (provider from `LLM_PROVIDER`) to check the key, model and credits |
 | `npm run db:backfill-brand` | Set the provider brand on older connected accounts |
 
 ## AI analysis
 
-New mail is analysed after each sync, and a 15-minute job catches up on anything left. Each inbound email gets one of seven categories (needs reply, follow-up needed, lead reply, invoice or payment, newsletter or promo, FYI, spam), a priority from 1 to 3, a summary, and a suggested action. Up to 3000 characters of each email are sent to OpenAI.
+The AI scans **only mail received today** (in each tenant's own time zone, set in **Settings**), so older mail never uses credits. Mail is still fetched every 15 minutes, but the AI scan runs on its own interval, chosen by a **super admin** on the platform dashboard (`/admin`): 15 minutes, 30 minutes, or 1 to 10 hours (default 1 hour). Super admins are the emails listed in `SUPER_ADMIN_EMAILS`; anyone else gets a 404 on `/admin`.
 
-If the OpenAI account has no credits or the key is rejected, analysis pauses without using up any email's attempts, the Today page shows a notice, and it resumes by itself once the problem is fixed.
+Each inbound email gets one of seven categories (needs reply, follow-up needed, lead reply, invoice or payment, newsletter or promo, FYI, spam), a priority from 1 to 3, a summary, and a suggested action. Up to 3000 characters of each email are sent to the model.
+
+On **Today**, a progress bar shows "Scanning your mail" with the date being scanned. **Cancel** beside the bar stops the scan (the email in flight finishes) and turns automatic scans off for that tenant until **Scan now** is pressed. **Scan now** also starts a scan at any time.
+
+If the AI account has no credits or the key is rejected, analysis pauses without using up any email's attempts, the Today page shows a notice, and it resumes by itself once the problem is fixed.
 
 ## Notes
 

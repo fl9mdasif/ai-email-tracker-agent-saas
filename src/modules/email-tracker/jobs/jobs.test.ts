@@ -44,6 +44,7 @@ describe("analyze event and job list", () => {
       "email-tracker-sync-account",
       "email-tracker-scheduled-sync",
       "email-tracker-analyze-tenant",
+      "email-tracker-scheduled-analyze",
     ]);
   }, 30_000); // the first import loads the Inngest client and the database layer
 });

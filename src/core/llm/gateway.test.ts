@@ -115,7 +115,7 @@ describe("callModel", () => {
     expect(result).toEqual({
       ok: false,
       reason: "quota_exhausted",
-      message: "The AI service has no credits left. Add credits to the OpenAI account and analysis will resume.",
+      message: "The AI service has no credits left. Add credits to the AI provider account and analysis will resume.",
     });
     expect(requests).toHaveLength(1); // retrying cannot help
     expect(usageRows.map((row) => row.status)).toEqual(["quota_exhausted"]);

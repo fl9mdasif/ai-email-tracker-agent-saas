@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { getConfig, requireConfig } from "@/core/config";
+import { defaultModelFor, getConfig, requireConfig } from "@/core/config";
 import { type Database, getDb } from "@/core/db";
 import { llmUsage } from "@/core/db/schema";
 import { createOpenAiProvider } from "./openai-provider";
@@ -48,8 +48,8 @@ export type GatewayDeps = {
 
 type UsageStatus = "ok" | "invalid_output" | "error" | "quota_exhausted" | "auth_failed";
 
-const QUOTA_MESSAGE = "The AI service has no credits left. Add credits to the OpenAI account and analysis will resume.";
-const AUTH_MESSAGE = "The AI service rejected the API key. Check OPENAI_API_KEY.";
+const QUOTA_MESSAGE = "The AI service has no credits left. Add credits to the AI provider account and analysis will resume.";
+const AUTH_MESSAGE = "The AI service rejected the API key. Check the API key for the selected LLM_PROVIDER.";
 
 function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
   try {
@@ -150,13 +150,26 @@ export type CallModelFn = ReturnType<typeof createGateway>["callModel"];
 
 let provider: LlmProvider | undefined;
 
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+
+/** Builds the provider named by LLM_PROVIDER. Throws if its key is missing. */
+function buildProvider(): LlmProvider {
+  if (getConfig().LLM_PROVIDER === "groq") {
+    return createOpenAiProvider(requireConfig("GROQ_API_KEY"), { baseURL: GROQ_BASE_URL, strictSchema: false });
+  }
+  return createOpenAiProvider(requireConfig("OPENAI_API_KEY"));
+}
+
 const defaultGateway = createGateway({
   getProvider: () => {
-    provider ??= createOpenAiProvider(requireConfig("OPENAI_API_KEY"));
+    provider ??= buildProvider();
     return provider;
   },
   getDb,
-  defaultModel: () => getConfig().LLM_MODEL,
+  defaultModel: () => {
+    const config = getConfig();
+    return config.LLM_MODEL ?? defaultModelFor(config.LLM_PROVIDER);
+  },
 });
 
 export const callModel = defaultGateway.callModel;

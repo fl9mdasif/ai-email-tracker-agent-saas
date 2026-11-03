@@ -3,9 +3,10 @@ import type { Database } from "@/core/db";
 import { llmUsage } from "@/core/db/schema";
 import { MAX_ATTEMPTS } from "../ai/analyze-pending";
 import { ANALYSIS_USAGE_TAG } from "../ai/analyze-email";
+import { getTodayWindow } from "../scan/scan-state";
 
 export type AnalysisSummary = {
-  /** Inbound emails that have an AI result. */
+  /** Today's inbound emails that have an AI result. */
   analyzed: number;
   /** Inbound emails still waiting (new, or failed with attempts left). */
   waiting: number;
@@ -15,8 +16,12 @@ export type AnalysisSummary = {
   problem: "quota_exhausted" | "auth_failed" | null;
 };
 
-/** Where the tenant's AI analysis stands. Always scoped to the tenant. */
+/**
+ * Where the tenant's AI analysis stands for today's mail (the only mail the AI scans). Always
+ * scoped to the tenant.
+ */
 export async function getAnalysisSummary(db: Database, tenantId: string): Promise<AnalysisSummary> {
+  const { startOfToday } = await getTodayWindow(db, tenantId);
   const counts = await db.execute(sql`
     select
       count(*) filter (where a.status = 'analyzed')::int as analyzed,
@@ -24,7 +29,7 @@ export async function getAnalysisSummary(db: Database, tenantId: string): Promis
       count(*) filter (where a.status = 'failed' and a.attempts >= ${MAX_ATTEMPTS})::int as gave_up
     from et_emails e
     left join et_email_analysis a on a.email_id = e.id and a.tenant_id = ${tenantId}
-    where e.tenant_id = ${tenantId} and e.direction = 'inbound'
+    where e.tenant_id = ${tenantId} and e.direction = 'inbound' and e.received_at >= ${startOfToday.toISOString()}
   `);
   const row = (counts.rows[0] ?? {}) as { analyzed?: number; waiting?: number; gave_up?: number };
 

@@ -133,4 +133,17 @@ export const etEmailAnalysis = pgTable(
   ],
 );
 
+/**
+ * Where a tenant's AI scan stands. `paused` is set when the user presses Cancel: the running
+ * scan stops and no automatic scan starts until the user presses "Scan now".
+ */
+export const etScanState = pgTable("et_scan_state", {
+  tenantId: uuid("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  paused: boolean("paused").notNull().default(false),
+  lastScanStartedAt: timestamp("last_scan_started_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type NewEtEmail = typeof etEmails.$inferInsert;

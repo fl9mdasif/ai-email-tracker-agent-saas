@@ -66,16 +66,17 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
       subject: `Analysis test ${n}`,
       snippet: "s",
       bodyText: "Can you send the price?",
-      receivedAt: new Date(`2026-10-0${n}T08:00:00Z`),
+      // Only today's mail is scanned, so the test mail arrives "just now"; mail 5 is from long ago.
+      receivedAt: n === 5 ? new Date("2026-10-01T08:00:00Z") : new Date(Date.now() - n * 1000),
       direction,
       status: "unread" as const,
       labels: [],
     });
     await syncAccount(db, tenantA, account.id, {
       fetchEmails: async () => ({
-        emails: [mail(1, "inbound"), mail(2, "inbound"), mail(3, "inbound"), mail(4, "outbound")],
-        cursor: { uidValidity: "1", lastUid: 4 },
-        fetched: 4,
+        emails: [mail(1, "inbound"), mail(2, "inbound"), mail(3, "inbound"), mail(4, "outbound"), mail(5, "inbound")],
+        cursor: { uidValidity: "1", lastUid: 5 },
+        fetched: 5,
       }),
     });
   }, 90_000);
@@ -86,7 +87,7 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
     }
   }, 60_000);
 
-  it("analyzes new inbound mail, stores the result, and skips mail the account sent itself", async () => {
+  it("analyzes only today's inbound mail: older mail and mail the account sent itself are skipped", async () => {
     const d = deps(good);
     const outcome = await pending.analyzePendingEmails(db, tenantA, d);
 
@@ -194,6 +195,56 @@ describe.skipIf(!configured)("analyzePendingEmails (Neon)", () => {
     const rejected = deps({ ok: false, reason: "auth_failed", message: "The AI service rejected the API key." });
     expect(await pending.analyzePendingEmails(db, tenantA, rejected)).toMatchObject({ stoppedBecause: "auth_failed" });
     expect(await analysisRows(tenantA)).toHaveLength(0);
+  }, 90_000);
+
+  it("the summary counts only today's mail, so old mail never shows as waiting", async () => {
+    const { getAnalysisSummary } = await import("../queries/analysis");
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
+    const summary = await getAnalysisSummary(db, tenantA);
+    expect(summary).toMatchObject({ analyzed: 0, waiting: 3, gaveUp: 0 }); // 3 from today, not the old one
+  }, 60_000);
+
+  it("a time zone far ahead of UTC moves where today starts", async () => {
+    // Pacific/Kiritimati is UTC+14: a mail from 15 hours ago is "yesterday" there but not in UTC-12.
+    const { getTodayWindow } = await import("../scan/scan-state");
+    await db.update(core.tenants).set({ timezone: "Pacific/Kiritimati" }).where(eq(core.tenants.id, tenantA));
+    const ahead = await getTodayWindow(db, tenantA);
+    await db.update(core.tenants).set({ timezone: "Etc/GMT+12" }).where(eq(core.tenants.id, tenantA));
+    const behind = await getTodayWindow(db, tenantA);
+    await db.update(core.tenants).set({ timezone: "Asia/Dhaka" }).where(eq(core.tenants.id, tenantA));
+    expect(ahead.timeZone).toBe("Pacific/Kiritimati");
+    expect(ahead.startOfToday.getTime()).not.toBe(behind.startOfToday.getTime());
+  }, 60_000);
+
+  it("stops at once, without calling the AI, when the user has pressed Cancel; Scan now resumes", async () => {
+    const scan = await import("../scan/scan-state");
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
+
+    await scan.pauseScan(db, tenantA);
+    expect(await scan.isScanPaused(db, tenantA)).toBe(true);
+    expect(await scan.isScanPaused(db, tenantB)).toBe(false); // another tenant is unaffected
+
+    const stopped = deps(good);
+    expect(await pending.analyzePendingEmails(db, tenantA, stopped)).toEqual({ analyzed: 0, failed: 0, stoppedBecause: "cancelled" });
+    expect(stopped.analyze).not.toHaveBeenCalled();
+    expect(await analysisRows(tenantA)).toHaveLength(0); // no attempts used up
+
+    await scan.markScanStarted(db, tenantA);
+    expect(await scan.isScanPaused(db, tenantA)).toBe(false);
+    const resumed = deps(good);
+    expect(await pending.analyzePendingEmails(db, tenantA, resumed)).toMatchObject({ analyzed: 3, stoppedBecause: null });
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA)); // back to pending for the next test
+  }, 90_000);
+
+  it("cancelling in the middle of a scan finishes the current email and stops before the next", async () => {
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
+    let asked = 0;
+    const d = { ...deps(good), isCancelled: async () => ++asked > 1 };
+    const outcome = await pending.analyzePendingEmails(db, tenantA, d);
+    expect(outcome).toEqual({ analyzed: 1, failed: 0, stoppedBecause: "cancelled" });
+    expect(d.analyze).toHaveBeenCalledTimes(1);
+    expect(await analysisRows(tenantA)).toHaveLength(1);
+    await db.delete(et.etEmailAnalysis).where(eq(et.etEmailAnalysis.tenantId, tenantA));
   }, 90_000);
 
   it("respects the batch limit", async () => {

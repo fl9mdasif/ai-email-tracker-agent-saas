@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, Plug, type LucideIcon } from "lucide-react";
+import { Inbox, Plug, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
@@ -10,13 +10,18 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
 // Each milestone adds its own entries (Needs reply, Follow-ups, Chat, Settings).
-const NAV_ITEMS: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Today", icon: Inbox },
   { href: "/dashboard/accounts", label: "Accounts", icon: Plug },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+/** Shown only to super admins. */
+const ADMIN_NAV_ITEM: NavItem = { href: "/admin", label: "Platform", icon: ShieldCheck };
+
+export function AppShell({ children, showAdmin = false }: { children: React.ReactNode; showAdmin?: boolean }) {
   const pathname = usePathname();
+  const NAV_ITEMS = showAdmin ? [...BASE_NAV_ITEMS, ADMIN_NAV_ITEM] : BASE_NAV_ITEMS;
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">

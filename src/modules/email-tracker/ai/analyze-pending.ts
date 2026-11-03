@@ -1,9 +1,9 @@
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
-import { desc } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import type { Database } from "@/core/db";
 import { connectedAccounts } from "@/core/db/schema";
 import type { ModelFailureReason } from "@/core/llm/gateway";
 import { etEmailAnalysis, etEmails } from "../db/schema";
+import { getTodayWindow, isScanPaused } from "../scan/scan-state";
 import { type AnalyzeEmailResult, analyzeEmail } from "./analyze-email";
 import type { PromptEmail } from "./prompts";
 
@@ -17,6 +17,8 @@ export type AnalyzeDeps = {
     email: PromptEmail,
     context: { tenantId: string; mailboxOwner: string },
   ) => Promise<AnalyzeEmailResult>;
+  /** Asked before each email: true when the user pressed Cancel. Defaults to reading the tenant's scan state. */
+  isCancelled?: () => Promise<boolean>;
 };
 
 /** Failures of the service itself (not of one email): the run stops and no attempt is used up. */
@@ -25,15 +27,16 @@ const PAUSING_REASONS = new Set<ModelFailureReason>(["not_configured", "quota_ex
 export type AnalyzePendingOutcome = {
   analyzed: number;
   failed: number;
-  /** Set when the run stopped early because the AI service itself is unavailable. */
-  stoppedBecause: "not_configured" | "quota_exhausted" | "auth_failed" | null;
+  /** Set when the run stopped early: the AI service is unavailable, or the user pressed Cancel. */
+  stoppedBecause: "not_configured" | "quota_exhausted" | "auth_failed" | "cancelled" | null;
 };
 
 const defaultDeps: AnalyzeDeps = { analyze: (email, context) => analyzeEmail(email, context) };
 
 /**
- * Analyzes the tenant's newest inbound emails that have no result yet, plus earlier failures
- * that still have attempts left. Results are stored per email, so running it twice never
+ * Analyzes the tenant's inbound emails from today (in the tenant's own time zone) that have no
+ * result yet, plus earlier failures that still have attempts left. Older mail is never scanned,
+ * which keeps the model bill small. Results are stored per email, so running it twice never
  * analyzes the same email twice. One failing email never stops the others. Only this tenant's
  * mail is read, and only the AI gateway is called; the mailbox is never touched.
  */
@@ -43,6 +46,9 @@ export async function analyzePendingEmails(
   deps: AnalyzeDeps = defaultDeps,
   limit = BATCH_SIZE,
 ): Promise<AnalyzePendingOutcome> {
+  const { startOfToday } = await getTodayWindow(db, tenantId);
+  const isCancelled = deps.isCancelled ?? (() => isScanPaused(db, tenantId));
+
   const pending = await db
     .select({
       id: etEmails.id,
@@ -65,6 +71,7 @@ export async function analyzePendingEmails(
       and(
         eq(etEmails.tenantId, tenantId),
         eq(etEmails.direction, "inbound"),
+        gte(etEmails.receivedAt, startOfToday),
         or(
           isNull(etEmailAnalysis.id),
           and(eq(etEmailAnalysis.status, "failed"), lt(etEmailAnalysis.attempts, MAX_ATTEMPTS)),
@@ -77,6 +84,12 @@ export async function analyzePendingEmails(
   const outcome: AnalyzePendingOutcome = { analyzed: 0, failed: 0, stoppedBecause: null };
 
   for (const row of pending) {
+    // Cancel is honoured between emails; the one call already in flight is allowed to finish.
+    if (await isCancelled()) {
+      outcome.stoppedBecause = "cancelled";
+      break;
+    }
+
     const result = await deps.analyze(
       {
         fromAddress: row.fromAddress,

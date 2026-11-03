@@ -51,7 +51,8 @@ describe.skipIf(!configured)("email queries (Neon)", () => {
       subject: `Query test ${n}`,
       snippet: "snippet",
       bodyText: "a long body that previews must not include",
-      receivedAt: new Date(`2026-10-0${n}T08:00:00Z`),
+      // Mail 3 is the newest. All of it arrives today, the only mail the AI scans.
+      receivedAt: new Date(Date.now() - (4 - n) * 1000),
       direction: "inbound" as const,
       status: "unread" as const,
       labels: [],
