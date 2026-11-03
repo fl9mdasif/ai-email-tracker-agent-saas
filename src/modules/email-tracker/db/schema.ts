@@ -123,6 +123,10 @@ export const etEmailAnalysis = pgTable(
     summary: text("summary"),
     suggestedAction: text("suggested_action"),
     model: text("model"),
+    /** Set only for mail from a prospect: how keen they are to buy. Null for everything else. */
+    leadTemperature: text("lead_temperature", { enum: ["hot", "warm", "cold"] }),
+    /** One short sentence on why, e.g. "Asked for a price for 10 seats". */
+    leadReason: text("lead_reason"),
     attempts: integer("attempts").notNull().default(0),
     /** A safe message, never model output or email text. */
     error: text("error"),
@@ -224,6 +228,105 @@ export const etChatMessages = pgTable(
     index("et_chat_messages_tenant_created_idx").on(table.tenantId, table.createdAt),
     index("et_chat_messages_user_created_idx").on(table.tenantId, table.userId, table.createdAt),
   ],
+);
+
+export const LEAD_TEMPERATURES = ["hot", "warm", "cold"] as const;
+export type LeadTemperature = (typeof LEAD_TEMPERATURES)[number];
+
+/**
+ * One prospect per workspace, keyed by their email address. The newest scored email from them
+ * decides the temperature. A lead that was just written to (or skipped) is snoozed so it is not
+ * suggested again too soon.
+ */
+export const etLeads = pgTable(
+  "et_leads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Lower-cased. */
+    contactEmail: text("contact_email").notNull(),
+    contactName: text("contact_name"),
+    temperature: text("temperature", { enum: LEAD_TEMPERATURES }).notNull(),
+    reason: text("reason").notNull().default(""),
+    /** The newest scored email from this contact: the one a follow-up replies to. */
+    lastEmailId: uuid("last_email_id").references(() => etEmails.id, { onDelete: "set null" }),
+    lastEmailAt: timestamp("last_email_at", { withTimezone: true }),
+    lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
+    snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("et_leads_tenant_contact_uq").on(table.tenantId, table.contactEmail),
+    index("et_leads_tenant_temperature_idx").on(table.tenantId, table.temperature),
+  ],
+);
+
+export const DRAFT_STATUSES = ["draft", "sending", "sent", "skipped", "failed"] as const;
+export type DraftStatus = (typeof DRAFT_STATUSES)[number];
+
+/**
+ * A follow-up the AI wrote for a lead, waiting for the user. Nothing is ever sent without the
+ * user pressing Send on exactly this draft. "sending" is held while one send is in flight, so a
+ * second click cannot send it again.
+ */
+export const etFollowupDrafts = pgTable(
+  "et_followup_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    leadId: uuid("lead_id")
+      .notNull()
+      .references(() => etLeads.id, { onDelete: "cascade" }),
+    /** The email this follow-up answers (it carries the thread and the mailbox). */
+    replyToEmailId: uuid("reply_to_email_id")
+      .notNull()
+      .references(() => etEmails.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => connectedAccounts.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    status: text("status", { enum: DRAFT_STATUSES }).notNull().default("draft"),
+    model: text("model"),
+    /** A short code such as "auth_failed", never server text. */
+    errorCode: text("error_code"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("et_followup_drafts_tenant_lead_idx").on(table.tenantId, table.leadId),
+    index("et_followup_drafts_tenant_created_idx").on(table.tenantId, table.createdAt),
+  ],
+);
+
+/**
+ * Every send attempt: who sent which draft from which mailbox to whom, and whether it went.
+ * Deliberately no subject and no body.
+ */
+export const etSendAudit = pgTable(
+  "et_send_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    draftId: uuid("draft_id").references(() => etFollowupDrafts.id, { onDelete: "set null" }),
+    accountId: uuid("account_id").references(() => connectedAccounts.id, { onDelete: "set null" }),
+    toAddress: text("to_address").notNull(),
+    /** The Message-ID of the sent mail, when the provider gave one. */
+    sentMessageId: text("sent_message_id"),
+    outcome: text("outcome", { enum: ["sent", "failed"] }).notNull(),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("et_send_audit_tenant_created_idx").on(table.tenantId, table.createdAt)],
 );
 
 export type NewEtEmail = typeof etEmails.$inferInsert;
